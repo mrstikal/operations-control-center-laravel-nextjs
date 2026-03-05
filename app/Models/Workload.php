@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\AsJson;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -22,7 +21,7 @@ class Workload extends Model
         'hours_allocated' => 'decimal:2',
         'hours_actual' => 'decimal:2',
         'capacity_utilization' => 'decimal:2',
-        'tasks' => AsJson::class,
+        'tasks' => 'json',
     ];
 
     // ========== RELATIONS ==========

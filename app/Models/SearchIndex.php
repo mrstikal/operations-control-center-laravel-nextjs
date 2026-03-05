@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\AsJson;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -19,7 +18,7 @@ class SearchIndex extends Model
     ];
 
     protected $casts = [
-        'metadata' => AsJson::class,
+        'metadata' => 'json',
         'indexed_at' => 'datetime',
         'updated_at' => 'datetime',
     ];

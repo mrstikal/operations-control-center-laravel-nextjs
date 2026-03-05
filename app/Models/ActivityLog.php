@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\AsJson;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -23,7 +22,7 @@ class ActivityLog extends Model
     ];
 
     protected $casts = [
-        'properties' => AsJson::class,
+        'properties' => 'json',
         'created_at' => 'datetime',
     ];
 

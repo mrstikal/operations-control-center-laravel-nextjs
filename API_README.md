@@ -1,15 +1,56 @@
-# 🎉 API Development - HOTOVO!
+# 🎉 API Documentation - Phase 10 Dashboard
+
+**Last Updated:** 5. března 2026  
+**Status:** 40+ REST endpoints hotovo + Dashboard API
 
 ## 📡 Co Bylo Implementováno
 
-### 30+ REST API Endpoints
-```
-Authentication (4)    → Login, Register, Me, Logout
-Contracts (7)         → CRUD + approve, change-status
-Incidents (7)         → CRUD + escalate, close
-Assets (7)            → CRUD + maintenance operations
-Users (6)             → List, Show, Update, Assign roles
-```
+### Endpoint Groups
+
+#### Authentication (4)
+- `POST /api/login` - Login & generate token
+- `POST /api/register` - Register new user
+- `GET /api/me` - Get current user
+- `POST /api/logout` - Logout
+
+#### Contracts (7)
+- `GET /api/contracts` - List (filtered, paginated)
+- `GET /api/contracts/{id}` - Show detail
+- `POST /api/contracts` - Create
+- `PUT /api/contracts/{id}` - Update
+- `DELETE /api/contracts/{id}` - Delete
+- `POST /api/contracts/{id}/approve` - Approve
+- `POST /api/contracts/{id}/change-status` - Change status
+
+#### Incidents (7)
+- `GET /api/incidents` - List
+- `GET /api/incidents/{id}` - Show
+- `POST /api/incidents` - Create
+- `PUT /api/incidents/{id}` - Update
+- `DELETE /api/incidents/{id}` - Delete
+- `POST /api/incidents/{id}/escalate` - Escalate
+- `POST /api/incidents/{id}/close` - Close
+
+#### Assets (7)
+- `GET /api/assets` - List
+- `GET /api/assets/{id}` - Show
+- `POST /api/assets` - Create
+- `PUT /api/assets/{id}` - Update
+- `DELETE /api/assets/{id}` - Delete
+- `POST /api/assets/{id}/maintenance` - Schedule maintenance
+- `GET /api/assets/{id}/maintenance-history` - Maintenance log
+
+#### Users & Roles (8)
+- `GET /api/users` - List
+- `GET /api/users/{id}` - Show
+- `PUT /api/users/{id}` - Update
+- `POST /api/users/{id}/assign-role` - Assign role
+- `GET /api/roles` - List roles
+- `GET /api/permissions` - List permissions
+
+#### **Dashboard - NEW (2)**
+- `GET /api/dashboard/summary` - KPI metriky (operativní + obchodní)
+- `GET /api/dashboard/feed` - Event timeline
 
 ### Smart Features
 - ✅ Paginace s metadaty
@@ -35,6 +76,37 @@ TOKEN=$(curl -s -X POST http://localhost:8000/api/login \
 echo "Token: $TOKEN"
 ```
 
+### Dashboard Summary - NEW!
+```bash
+curl -X GET 'http://localhost:8000/api/dashboard/summary' \
+  -H "Authorization: Bearer $TOKEN" \
+  | jq
+
+# Response
+{
+  "data": {
+    "operational": {
+      "orders": { "total": 15, "completed": 8, "pending": 3, "overdue": 2 },
+      "incidents": { "total": 12, "open": 5, "escalated": 2, "sla_breached": 1 }
+    },
+    "business": {
+      "budget_usage": 45.5,
+      "active_contract_value": 125000,
+      "avg_resolution_time": "2.5h"
+    }
+  }
+}
+```
+
+### Dashboard Feed - NEW!
+```bash
+curl -X GET 'http://localhost:8000/api/dashboard/feed?limit=15' \
+  -H "Authorization: Bearer $TOKEN" \
+  | jq
+
+# Response: Recent events timeline
+```
+
 ### Get Contracts (Filtered)
 ```bash
 curl -X GET 'http://localhost:8000/api/contracts?status=in_progress&per_page=10' \
@@ -48,6 +120,54 @@ curl -X POST http://localhost:8000/api/contracts \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
+    "contract_number": "CT-2026-099",
+    "title": "New Project",
+    "client_id": 1,
+    "status": "draft",
+    "budget": 50000
+  }' \
+  | jq
+```
+
+---
+
+## 📊 Response Format
+
+### Success Response
+```json
+{
+  "data": { /* Resource data */ },
+  "meta": {
+    "current_page": 1,
+    "per_page": 10,
+    "total": 50,
+    "last_page": 5
+  }
+}
+```
+
+### Error Response
+```json
+{
+  "message": "Validation failed",
+  "errors": {
+    "email": ["Email is required"]
+  }
+}
+```
+
+---
+
+## 🔐 Authentication
+
+All endpoints (except `/login`, `/register`) require:
+```
+Authorization: Bearer {TOKEN}
+```
+
+---
+
+**See also:** [PHASE_10_DASHBOARD.md](PHASE_10_DASHBOARD.md)
     "contract_number":"CNT-NEW",
     "title":"Project Name",
     "priority":"high",

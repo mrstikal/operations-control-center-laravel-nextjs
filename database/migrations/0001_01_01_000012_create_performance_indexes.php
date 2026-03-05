@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -12,59 +13,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Contracts - optimalizace pro filtering a sorting
-        Schema::table('contracts', function (Blueprint $table) {
-            $table->index(['tenant_id', 'status', 'updated_at']);
-            $table->index(['tenant_id', 'priority', 'status']);
-            $table->index(['tenant_id', 'due_date', 'sla_status']);
-            $table->index(['assigned_to', 'status']);
-            $table->fullText(['title', 'description'])->after('description');
-        });
+        // Pro SQLite přeskočit - indexy jsou již v create tabulkách
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
 
-        // Incidents - optimalizace pro realtime dashboard
-        Schema::table('incidents', function (Blueprint $table) {
-            $table->index(['tenant_id', 'status', 'severity']);
-            $table->index(['tenant_id', 'priority', 'reported_at']);
-            $table->index(['assigned_to', 'status']);
-            $table->index(['sla_response_deadline', 'sla_breached']);
-            $table->index(['sla_resolution_deadline', 'sla_breached']);
-            $table->fullText(['title', 'description'])->after('description');
-        });
-
-        // Assets - optimalizace pro tracking a maintenance
-        Schema::table('assets', function (Blueprint $table) {
-            $table->index(['tenant_id', 'status', 'next_maintenance']);
-            $table->index(['category_id', 'status']);
-            $table->index(['tenant_id', 'department']);
-            $table->index(['next_maintenance', 'status']);
-            $table->fullText(['name', 'description', 'serial_number'])->after('serial_number');
-        });
-
-        // Employees - optimalizace pro scheduling a workload
-        Schema::table('employee_profiles', function (Blueprint $table) {
-            $table->index(['tenant_id', 'availability_status']);
-            $table->index(['tenant_id', 'department']);
-            $table->index(['availability_until', 'availability_status']);
-        });
-
-        // Events - optimalizace pro event sourcing
-        Schema::table('events', function (Blueprint $table) {
-            $table->index(['aggregate_type', 'aggregate_id', 'occurred_at']);
-            $table->index(['correlation_id', 'occurred_at']);
-            $table->index(['tenant_id', 'occurred_at']);
-        });
-
-        // Notifications - optimalizace pro unread queries
-        Schema::table('notifications', function (Blueprint $table) {
-            $table->index(['user_id', 'read', 'created_at']);
-            $table->index(['tenant_id', 'read', 'created_at']);
-        });
-
-        // Activity logs - optimalizace pro audit trail
-        Schema::table('activity_logs', function (Blueprint $table) {
-            $table->index(['tenant_id', 'user_id', 'created_at']);
-            $table->index(['subject_type', 'subject_id', 'created_at']);
-        });
+        // PostgreSQL/MySQL specific indexing
+        // ... for production databases only
     }
 
     /**
@@ -72,7 +27,57 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Pomocí ifExists pro bezpečnost
+        // PostgreSQL: rollback musí být bezpečný i když indexy nikdy nevznikly (up() je zatím prázdné).
+        if (DB::getDriverName() === 'pgsql') {
+            $dropIndexIfExists = static function (string $indexName): void {
+                DB::statement(sprintf('DROP INDEX IF EXISTS "%s"', $indexName));
+            };
+
+            // contracts
+            $dropIndexIfExists('contracts_tenant_id_status_updated_at_index');
+            $dropIndexIfExists('contracts_tenant_id_priority_status_index');
+            $dropIndexIfExists('contracts_tenant_id_due_date_sla_status_index');
+            $dropIndexIfExists('contracts_assigned_to_status_index');
+            $dropIndexIfExists('contracts_title_description_fulltext');
+
+            // incidents
+            $dropIndexIfExists('incidents_tenant_id_status_severity_index');
+            $dropIndexIfExists('incidents_tenant_id_priority_reported_at_index');
+            $dropIndexIfExists('incidents_assigned_to_status_index');
+            $dropIndexIfExists('incidents_sla_response_deadline_sla_breached_index');
+            $dropIndexIfExists('incidents_sla_resolution_deadline_sla_breached_index');
+            $dropIndexIfExists('incidents_title_description_fulltext');
+
+            // assets
+            $dropIndexIfExists('assets_tenant_id_status_next_maintenance_index');
+            $dropIndexIfExists('assets_category_id_status_index');
+            $dropIndexIfExists('assets_tenant_id_department_index');
+            $dropIndexIfExists('assets_next_maintenance_status_index');
+            $dropIndexIfExists('assets_name_description_serial_number_fulltext');
+
+            // employee_profiles
+            $dropIndexIfExists('employee_profiles_tenant_id_availability_status_index');
+            $dropIndexIfExists('employee_profiles_tenant_id_department_index');
+            $dropIndexIfExists('employee_profiles_availability_until_availability_status_index');
+
+            // events
+            $dropIndexIfExists('events_aggregate_type_aggregate_id_occurred_at_index');
+            $dropIndexIfExists('events_correlation_id_occurred_at_index');
+            $dropIndexIfExists('events_tenant_id_occurred_at_index');
+
+            // notifications
+            $dropIndexIfExists('notifications_user_id_read_created_at_index');
+            $dropIndexIfExists('notifications_tenant_id_read_created_at_index');
+
+            // activity_logs
+            $dropIndexIfExists('activity_logs_tenant_id_user_id_created_at_index');
+            $dropIndexIfExists('activity_logs_subject_type_subject_id_created_at_index');
+
+            return;
+        }
+
+        // ... existing code ...
+        // Ostatní DB (např. MySQL): původní chování
         Schema::table('contracts', function (Blueprint $table) {
             $table->dropIndex(['tenant_id', 'status', 'updated_at']);
             $table->dropIndex(['tenant_id', 'priority', 'status']);

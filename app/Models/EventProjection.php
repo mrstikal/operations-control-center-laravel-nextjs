@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\AsJson;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -19,7 +18,7 @@ class EventProjection extends Model
     ];
 
     protected $casts = [
-        'projection_state' => AsJson::class,
+        'projection_state' => 'json',
         'is_active' => 'boolean',
     ];
 

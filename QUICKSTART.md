@@ -1,48 +1,95 @@
-# 🚀 Quick Start Guide - Operations Control Center
+# 🚀 Quick Start Guide - Phase 10 Dashboard
 
-## 📦 Instalace a Setup
-
-### 1. Klonování a Dependencies
-
-```bash
-cd F:\laravel\operations-control-center
-composer install
-npm install
-```
-
-### 2. Konfigurace
-
-```bash
-# Zkopírovat .env
-cp .env.example .env
-
-# Generovat app key
-php artisan key:generate
-
-# Setup databáze
-php artisan migrate
-php artisan db:seed
-php artisan db:seed --class=RoleAndPermissionSeeder
-```
-
-### 3. Spuštění
-
-```bash
-# Development server
-php artisan serve
-
-# V jiném terminálu - Queue worker
-php artisan queue:listen --tries=1
-
-# V třetím terminálu - Frontend
-npm run dev
-```
-
-Aplikace poběží na `http://localhost:8000`
+**Updated:** 5. března 2026  
+**Status:** Backend ✅, Frontend 🔄  
+**Time:** 5-10 minutes
 
 ---
 
-## 👥 Test Uživatelé
+## 📦 Prerequisites
+
+- Docker installed (PostgreSQL, Redis, Mailhog)
+- PHP 8.4+
+- Node.js 18+
+- Composer
+
+---
+
+## ⚡ Step 1: Docker Services (2 min)
+
+```bash
+cd F:\laravel\operations-control-center
+
+# Start all services
+docker-compose up -d
+
+# Verify
+docker-compose ps
+```
+
+**Running:**
+- PostgreSQL: `localhost:5440`
+- Redis: `localhost:6379`  
+- Mailhog: `http://localhost:1025`
+
+---
+
+## ⚡ Step 2: Backend Setup (3 min)
+
+```bash
+# Install dependencies (if first time)
+composer install
+
+# Create .env if missing
+cp .env.example .env
+php artisan key:generate
+
+# Migrations & seeding
+php artisan migrate
+php artisan db:seed
+
+# Start server (port 8000)
+php artisan serve --port=8000
+```
+
+**Endpoint:** http://localhost:8000
+
+---
+
+## ⚡ Step 3: Frontend Setup (2 min)
+
+```bash
+# Go to frontend
+cd frontend
+
+# Install & run
+npm install
+npm run dev
+```
+
+**Endpoint:** http://localhost:3000
+
+---
+
+## ✅ Verify It Works
+
+### 1. Login
+- Go to http://localhost:3000
+- Email: `admin@test.local`
+- Password: `password`
+
+### 2. Dashboard
+See KPI metrics & event timeline
+
+### 3. API Test
+```bash
+curl -X GET http://localhost:8000/api/dashboard/summary \
+  -H "Authorization: Bearer {TOKEN}"
+```
+
+---
+
+## 👥 Test Users
 
 ```
 Email                   | Password  | Role

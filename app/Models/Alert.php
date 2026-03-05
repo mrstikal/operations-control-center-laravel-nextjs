@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\AsJson;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -29,7 +28,7 @@ class Alert extends Model
         'triggered_at' => 'datetime',
         'acknowledged_at' => 'datetime',
         'resolved_at' => 'datetime',
-        'metadata' => AsJson::class,
+        'metadata' => 'json',
     ];
 
     // ========== RELATIONS ==========

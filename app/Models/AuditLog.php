@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\AsJson;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -27,9 +26,9 @@ class AuditLog extends Model
     ];
 
     protected $casts = [
-        'old_values' => AsJson::class,
-        'new_values' => AsJson::class,
-        'metadata' => AsJson::class,
+        'old_values' => 'json',
+        'new_values' => 'json',
+        'metadata' => 'json',
         'created_at' => 'datetime',
     ];
 

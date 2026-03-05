@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\AsJson;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -27,8 +26,8 @@ class Event extends Model
     ];
 
     protected $casts = [
-        'payload' => AsJson::class,
-        'metadata' => AsJson::class,
+        'payload' => 'json',
+        'metadata' => 'json',
         'occurred_at' => 'datetime',
     ];
 
@@ -51,6 +50,14 @@ class Event extends Model
     }
 
     // ========== SCOPES ==========
+
+    /**
+     * Scope to filter by tenant.
+     */
+    public function scopeOfTenant($query, int $tenantId)
+    {
+        return $query->where('tenant_id', $tenantId);
+    }
 
     /**
      * Scope to filter by aggregate.

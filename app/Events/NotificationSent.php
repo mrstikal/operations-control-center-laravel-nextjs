@@ -46,7 +46,7 @@ class NotificationSent implements ShouldBroadcast
             'type' => $this->notification->type,
             'title' => $this->notification->title,
             'message' => $this->notification->message,
-            'is_read' => $this->notification->is_read,
+            'read' => $this->notification->read,
             'data' => $this->notification->data,
             'created_at' => $this->notification->created_at->toIso8601String(),
         ];
@@ -60,4 +60,3 @@ class NotificationSent implements ShouldBroadcast
         return 'notification.sent';
     }
 }
-

@@ -8,23 +8,35 @@ use App\Http\Requests\UpdateContractRequest;
 use App\Http\Resources\ContractResource;
 use App\Models\Contract;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
-/**
- * ContractController - REST API pro Contracts
- */
 class ContractController extends BaseApiController
 {
-    /**
-     * GET /api/contracts
-     * Vrátí seznam kontraktů s paginací
-     */
     public function index(): JsonResponse
     {
+        $driver = DB::connection()->getDriverName();
+        $search = request('search');
+
         $contracts = Contract::ofTenant($this->getTenantId())
             ->with('assignedTo', 'client', 'statusHistory')
             ->when(request('status'), fn($q) => $q->where('status', request('status')))
             ->when(request('priority'), fn($q) => $q->where('priority', request('priority')))
-            ->when(request('search'), fn($q) => $q->whereRaw("MATCH(title, description) AGAINST(? IN BOOLEAN MODE)", [request('search')]))
+            ->when($search, function ($q) use ($driver, $search) {
+                if ($driver === 'mysql') {
+                    $q->whereRaw(
+                        "MATCH(title, description) AGAINST(? IN BOOLEAN MODE)",
+                        [$search]
+                    );
+                    return;
+                }
+
+                // PostgreSQL / SQLite fallback
+                $like = '%' . $search . '%';
+                $q->where(function ($qq) use ($like) {
+                    $qq->where('title', 'like', $like)
+                       ->orWhere('description', 'like', $like);
+                });
+            })
             ->orderBy('created_at', 'desc')
             ->paginate(request('per_page', 15));
 

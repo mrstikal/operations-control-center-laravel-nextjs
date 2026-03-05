@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\AsJson;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -20,7 +19,7 @@ class EventSnapshot extends Model
     ];
 
     protected $casts = [
-        'state' => AsJson::class,
+        'state' => 'json',
         'created_at' => 'datetime',
     ];
 

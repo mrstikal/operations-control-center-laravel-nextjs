@@ -11,57 +11,60 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('incidents', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->string('incident_number')->unique()->index();
-            $table->string('title');
-            $table->text('description');
+        // Create incidents table only if it doesn't exist
+        if (!Schema::hasTable('incidents')) {
+            Schema::create('incidents', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
+                $table->string('incident_number')->unique()->index();
+                $table->string('title');
+                $table->text('description');
 
-            // Kategorisace
-            $table->string('category')->index();
-            $table->enum('severity', ['low', 'medium', 'high', 'critical'])
-                ->default('medium')
-                ->index();
-            $table->enum('priority', ['low', 'medium', 'high', 'critical'])
-                ->default('medium')
-                ->index();
-            $table->enum('status', ['open', 'in_progress', 'escalated', 'resolved', 'closed'])
-                ->default('open')
-                ->index();
+                // Kategorisace
+                $table->string('category')->index();
+                $table->enum('severity', ['low', 'medium', 'high', 'critical'])
+                    ->default('medium')
+                    ->index();
+                $table->enum('priority', ['low', 'medium', 'high', 'critical'])
+                    ->default('medium')
+                    ->index();
+                $table->enum('status', ['open', 'in_progress', 'escalated', 'resolved', 'closed'])
+                    ->default('open')
+                    ->index();
 
-            // Přiřazení
-            $table->foreignId('reported_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('assigned_to')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('escalated_to')->nullable()->constrained('users')->nullOnDelete();
+                // Přiřazení
+                $table->foreignId('reported_by')->constrained('users')->cascadeOnDelete();
+                $table->foreignId('assigned_to')->nullable()->constrained('users')->nullOnDelete();
+                $table->foreignId('escalated_to')->nullable()->constrained('users')->nullOnDelete();
 
-            // Vztahy
-            $table->foreignId('contract_id')->nullable()->constrained('contracts')->nullOnDelete();
-            $table->foreignId('asset_id')->nullable()->constrained('assets')->nullOnDelete();
+                // Vztahy
+                $table->foreignId('contract_id')->nullable()->constrained('contracts')->nullOnDelete();
+                $table->foreignId('asset_id')->nullable()->constrained('assets')->nullOnDelete();
 
-            // Časové údaje
-            $table->timestamp('reported_at');
-            $table->timestamp('acknowledged_at')->nullable();
-            $table->timestamp('started_at')->nullable();
-            $table->timestamp('resolved_at')->nullable();
-            $table->timestamp('closed_at')->nullable();
+                // Časové údaje
+                $table->timestamp('reported_at');
+                $table->timestamp('acknowledged_at')->nullable();
+                $table->timestamp('started_at')->nullable();
+                $table->timestamp('resolved_at')->nullable();
+                $table->timestamp('closed_at')->nullable();
 
-            // SLA
-            $table->integer('sla_response_minutes')->nullable();
-            $table->integer('sla_resolution_minutes')->nullable();
-            $table->dateTime('sla_response_deadline')->nullable()->index();
-            $table->dateTime('sla_resolution_deadline')->nullable()->index();
-            $table->boolean('sla_breached')->default(false)->index();
+                // SLA
+                $table->integer('sla_response_minutes')->nullable();
+                $table->integer('sla_resolution_minutes')->nullable();
+                $table->dateTime('sla_response_deadline')->nullable()->index();
+                $table->dateTime('sla_resolution_deadline')->nullable()->index();
+                $table->boolean('sla_breached')->default(false)->index();
 
-            // Metadata
-            $table->json('tags')->nullable();
-            $table->text('resolution_summary')->nullable();
-            $table->json('custom_fields')->nullable();
-            $table->integer('version')->default(1);
+                // Metadata
+                $table->json('tags')->nullable();
+                $table->text('resolution_summary')->nullable();
+                $table->json('custom_fields')->nullable();
+                $table->integer('version')->default(1);
 
-            $table->timestamps();
-            $table->softDeletes();
-        });
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
 
         Schema::create('incident_timeline', function (Blueprint $table) {
             $table->id();

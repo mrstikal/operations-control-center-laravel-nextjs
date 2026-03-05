@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\AsJson;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -32,8 +31,8 @@ class EmployeeProfile extends Model
         'availability_until' => 'datetime',
         'available_hours_per_week' => 'integer',
         'utilization_percent' => 'decimal:2',
-        'skills' => AsJson::class,
-        'certifications' => AsJson::class,
+        'skills' => 'json',
+        'certifications' => 'json',
     ];
 
     // ========== RELATIONS ==========

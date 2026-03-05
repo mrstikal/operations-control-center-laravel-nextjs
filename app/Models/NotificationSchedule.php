@@ -2,26 +2,34 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class AssetCategory extends Model
+class NotificationSchedule extends Model
 {
     use HasFactory;
 
-    public $timestamps = true;
+    protected $table = 'notification_schedules';
 
     protected $fillable = [
         'tenant_id',
         'name',
-        'description',
-        'icon',
+        'notification_type',
+        'trigger',
+        'conditions',
+        'recipients',
+        'is_active',
     ];
 
-    // ========== RELATIONS ==========
+    protected $casts = [
+        'conditions' => 'json',
+        'recipients' => 'json',
+        'is_active' => 'boolean',
+    ];
 
     /**
-     * Get the tenant this category belongs to.
+     * Get the tenant that owns the notification schedule.
      */
     public function tenant(): BelongsTo
     {
@@ -29,21 +37,18 @@ class AssetCategory extends Model
     }
 
     /**
-     * Get all assets in this category.
+     * Scope a query to only include active notification schedules.
      */
-    public function assets(): HasMany
+    public function scopeActive($query)
     {
-        return $this->hasMany(Asset::class, 'category_id');
+        return $query->where('is_active', true);
     }
-
-    // ========== SCOPES ==========
 
     /**
-     * Scope to filter by tenant.
+     * Scope a query to only include notification schedules with a given trigger.
      */
-    public function scopeOfTenant($query, $tenantId)
+    public function scopeByTrigger($query, $trigger)
     {
-        return $query->where('tenant_id', $tenantId);
+        return $query->where('trigger', $trigger);
     }
 }
-

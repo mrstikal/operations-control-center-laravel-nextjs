@@ -1,0 +1,57 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: occ-postgres
+    ports:
+      - "5440:5432"
+    environment:
+      POSTGRES_DB: operations_control_center
+      POSTGRES_USER: occ_user
+      POSTGRES_PASSWORD: occ_secure_password_123
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U occ_user -d operations_control_center"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - occ-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: occ-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - occ-network
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: occ-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - occ-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  occ-network:
+    driver: bridge
+

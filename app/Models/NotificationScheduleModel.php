@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\AsJson;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -21,8 +20,8 @@ class NotificationScheduleModel extends Model
     ];
 
     protected $casts = [
-        'conditions' => AsJson::class,
-        'recipients' => AsJson::class,
+        'conditions' => 'json',
+        'recipients' => 'json',
         'is_active' => 'boolean',
     ];
 

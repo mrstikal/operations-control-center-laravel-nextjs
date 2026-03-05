@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\AsJson;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -26,7 +25,7 @@ class Notification extends Model
     protected $casts = [
         'read' => 'boolean',
         'read_at' => 'datetime',
-        'data' => AsJson::class,
+        'data' => 'json',
     ];
 
     // ========== RELATIONS ==========

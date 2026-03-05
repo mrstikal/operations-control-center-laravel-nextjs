@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -35,10 +36,48 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // PostgreSQL: shazuj FK/columns bezpečně (rollback musí být idempotentní)
+        if (DB::getDriverName() === 'pgsql') {
+            if (Schema::hasTable('users')) {
+                // FK constraint může/nemusí existovat (nebo může mít jiné jméno) -> IF EXISTS
+                DB::statement('ALTER TABLE "users" DROP CONSTRAINT IF EXISTS "users_tenant_id_foreign"');
+
+                // drop sloupců pouze pokud existují
+                if (Schema::hasColumn('users', 'tenant_id')) {
+                    Schema::table('users', function (Blueprint $table) {
+                        $table->dropColumn('tenant_id');
+                    });
+                }
+
+                $columns = [
+                    'employee_id',
+                    'role',
+                    'phone',
+                    'bio',
+                    'avatar_url',
+                    'status',
+                    'last_login_at',
+                    'preferences',
+                    'deleted_at',
+                ];
+
+                $existing = array_values(array_filter($columns, fn ($c) => Schema::hasColumn('users', $c)));
+
+                if (!empty($existing)) {
+                    Schema::table('users', function (Blueprint $table) use ($existing) {
+                        $table->dropColumn($existing);
+                    });
+                }
+            }
+
+            return;
+        }
+
+        // Ostatní DB: původní chování
         Schema::table('users', function (Blueprint $table) {
-            $table->dropForeignIdFor('tenants');
+            $table->dropConstrainedForeignId('tenant_id');
+
             $table->dropColumn([
-                'tenant_id',
                 'employee_id',
                 'role',
                 'phone',

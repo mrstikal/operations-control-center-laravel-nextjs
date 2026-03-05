@@ -20,7 +20,7 @@ class CheckRole
     public function handle(Request $request, Closure $next, string $roles = null): Response
     {
         if (!auth()->check()) {
-            abort(401, 'Unauthorized');
+            return response()->json(['message' => 'Unauthorized'], 401);
         }
 
         if (!$roles) {
@@ -38,7 +38,7 @@ class CheckRole
         }
 
         if (!$userHasRole) {
-            abort(403, "Access denied. Required role(s): {$roles}");
+            return response()->json(['message' => "Access denied. Required role(s): {$roles}"], 403);
         }
 
         return $next($request);

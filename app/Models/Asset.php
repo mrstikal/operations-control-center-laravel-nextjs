@@ -41,9 +41,9 @@ class Asset extends Model
         'last_maintenance' => 'datetime',
         'next_maintenance' => 'datetime',
         'utilization_percent' => 'decimal:2',
-        'specifications' => 'json',
-        'custom_fields' => 'json',
-        'documents' => 'json',
+        'specifications' => 'array',
+        'custom_fields' => 'array',
+        'documents' => 'array',
     ];
 
     // ========== RELATIONS ==========

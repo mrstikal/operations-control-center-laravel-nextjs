@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\AsJson;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -52,8 +51,8 @@ class Incident extends Model
         'sla_response_deadline' => 'datetime',
         'sla_resolution_deadline' => 'datetime',
         'sla_breached' => 'boolean',
-        'tags' => AsJson::class,
-        'custom_fields' => AsJson::class,
+        'tags' => 'json',
+        'custom_fields' => 'json',
     ];
 
     // ========== RELATIONS ==========

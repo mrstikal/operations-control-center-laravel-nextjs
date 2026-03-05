@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -27,8 +28,13 @@ return new class extends Migration
 
             $table->unique(['indexable_type', 'indexable_id']);
             $table->index(['tenant_id', 'indexable_type']);
-            // Fulltext index pro MySQL/PostgreSQL
-            $table->fullText('searchable_text');
+
+            // Fulltext index pro MySQL/PostgreSQL (SQLite uses regular index)
+            if (DB::getDriverName() !== 'sqlite') {
+                $table->fullText('searchable_text');
+            } else {
+                $table->index('searchable_text');
+            }
         });
 
         Schema::create('search_queries', function (Blueprint $table) {
@@ -54,4 +60,3 @@ return new class extends Migration
         Schema::dropIfExists('search_index');
     }
 };
-

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Casts\AsJson;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -42,8 +41,8 @@ class Contract extends Model
         'sla_deadline' => 'datetime',
         'budget' => 'decimal:2',
         'spent' => 'decimal:2',
-        'tags' => AsJson::class,
-        'custom_fields' => AsJson::class,
+        'tags' => 'json',
+        'custom_fields' => 'json',
     ];
 
     // ========== RELATIONS ==========

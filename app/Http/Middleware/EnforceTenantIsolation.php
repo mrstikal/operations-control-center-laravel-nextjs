@@ -26,7 +26,7 @@ class EnforceTenantIsolation
 
             // Validace že tenant_id v request matchuje
             if ($request->has('tenant_id') && $request->input('tenant_id') !== auth()->user()->tenant_id) {
-                abort(403, 'Tenant isolation violation');
+                return response()->json(['message' => 'Tenant isolation violation'], 403);
             }
         }
 

@@ -43,11 +43,11 @@ class AlertTriggered implements ShouldBroadcast
     {
         return [
             'id' => $this->alert->id,
-            'type' => $this->alert->type,
+            'alert_type' => $this->alert->alert_type,
             'severity' => $this->alert->severity,
-            'title' => $this->alert->title,
+            'subject' => $this->alert->subject,
             'message' => $this->alert->message,
-            'is_resolved' => $this->alert->is_resolved,
+            'status' => $this->alert->status,
             'created_at' => $this->alert->created_at->toIso8601String(),
         ];
     }
@@ -60,4 +60,3 @@ class AlertTriggered implements ShouldBroadcast
         return 'alert.triggered';
     }
 }
-
