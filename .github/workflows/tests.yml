@@ -1,0 +1,124 @@
+name: Tests & Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: operations_control_test
+          MYSQL_USER: test
+          MYSQL_PASSWORD: test
+          MYSQL_ROOT_PASSWORD: test
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+        ports:
+          - 3306:3306
+
+    strategy:
+      matrix:
+        php-version: ['8.2', '8.3']
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-version }}
+        extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, pdo_mysql, bcmath, soap, intl, gd, exif, iconv
+        coverage: xdebug
+
+    - name: Cache composer dependencies
+      uses: actions/cache@v3
+      with:
+        path: vendor
+        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: ${{ runner.os }}-composer-
+
+    - name: Install dependencies
+      run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+    - name: Create .env file
+      run: |
+        cp .env.example .env
+        php artisan key:generate
+
+    - name: Create test database
+      run: |
+        mkdir -p database
+        touch database/test.sqlite
+      env:
+        DB_CONNECTION: sqlite
+        DB_DATABASE: database/test.sqlite
+
+    - name: Run migrations
+      run: php artisan migrate --database=sqlite
+      env:
+        DB_CONNECTION: sqlite
+        DB_DATABASE: database/test.sqlite
+
+    - name: Run Pest tests
+      run: php artisan test
+      env:
+        DB_CONNECTION: sqlite
+        DB_DATABASE: database/test.sqlite
+
+    - name: Generate coverage report
+      run: php artisan test --coverage
+      env:
+        DB_CONNECTION: sqlite
+        DB_DATABASE: database/test.sqlite
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ./coverage.xml
+        verbose: true
+
+  code-style:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+
+    - name: Install dependencies
+      run: composer install
+
+    - name: Run Pint code style check
+      run: ./vendor/bin/pint --test
+
+  static-analysis:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+
+    - name: Install dependencies
+      run: composer install
+
+    - name: Run PHPStan static analysis
+      run: ./vendor/bin/phpstan analyse --level=max
+      continue-on-error: true
+
