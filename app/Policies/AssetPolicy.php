@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Asset;
+use App\Models\User;
 
 class AssetPolicy extends BasePolicy
 {
@@ -13,7 +13,7 @@ class AssetPolicy extends BasePolicy
     public function view(User $user, Asset $asset): bool
     {
         // Tenant isolation
-        if (!$this->sameTenantt($user, $asset)) {
+        if (! $this->belongsToTenant($user, $asset)) {
             return false;
         }
 
@@ -34,7 +34,7 @@ class AssetPolicy extends BasePolicy
     public function update(User $user, Asset $asset): bool
     {
         // Tenant isolation
-        if (!$this->sameTenantt($user, $asset)) {
+        if (! $this->belongsToTenant($user, $asset)) {
             return false;
         }
 
@@ -47,7 +47,7 @@ class AssetPolicy extends BasePolicy
     public function delete(User $user, Asset $asset): bool
     {
         // Tenant isolation
-        if (!$this->sameTenantt($user, $asset)) {
+        if (! $this->belongsToTenant($user, $asset)) {
             return false;
         }
 
@@ -60,7 +60,7 @@ class AssetPolicy extends BasePolicy
     public function logMaintenance(User $user, Asset $asset): bool
     {
         // Tenant isolation
-        if (!$this->sameTenantt($user, $asset)) {
+        if (! $this->belongsToTenant($user, $asset)) {
             return false;
         }
 
@@ -73,7 +73,7 @@ class AssetPolicy extends BasePolicy
     public function scheduleMaintenance(User $user, Asset $asset): bool
     {
         // Tenant isolation
-        if (!$this->sameTenantt($user, $asset)) {
+        if (! $this->belongsToTenant($user, $asset)) {
             return false;
         }
 
@@ -85,6 +85,10 @@ class AssetPolicy extends BasePolicy
      */
     public function restore(User $user, Asset $asset): bool
     {
+        if (! $this->belongsToTenant($user, $asset)) {
+            return false;
+        }
+
         return $user->hasPermission('assets', 'edit');
     }
 
@@ -93,7 +97,10 @@ class AssetPolicy extends BasePolicy
      */
     public function forceDelete(User $user, Asset $asset): bool
     {
+        if (! $this->belongsToTenant($user, $asset)) {
+            return false;
+        }
+
         return $user->hasPermission('assets', 'delete');
     }
 }
-

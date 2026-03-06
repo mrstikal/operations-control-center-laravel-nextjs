@@ -3,6 +3,10 @@ import http from "node:http";
 const targets = [
   process.env.SMOKE_API_URL || "http://127.0.0.1:8000/api/me",
   process.env.SMOKE_WEB_URL || "http://127.0.0.1:3000/login",
+  process.env.SMOKE_EMPLOYEES_URL || "http://127.0.0.1:3000/employees",
+  process.env.SMOKE_EMPLOYEE_DETAIL_URL || "http://127.0.0.1:3000/employees/1",
+  process.env.SMOKE_SHIFTS_URL || "http://127.0.0.1:3000/shifts",
+  process.env.SMOKE_TIMEOFF_URL || "http://127.0.0.1:3000/time-off",
 ];
 
 function check(url) {
@@ -25,4 +29,3 @@ const failed = results.some((x) => x.status === 0);
 if (failed) {
   process.exit(1);
 }
-

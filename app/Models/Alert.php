@@ -125,4 +125,3 @@ class Alert extends Model
         return $this->status === 'active';
     }
 }
-

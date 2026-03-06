@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Permission extends Model
@@ -14,7 +13,6 @@ class Permission extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'tenant_id',
         'name',
         'description',
         'resource',
@@ -22,14 +20,6 @@ class Permission extends Model
     ];
 
     // ========== RELATIONS ==========
-
-    /**
-     * Get the tenant this permission belongs to.
-     */
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
 
     /**
      * Get all roles with this permission.
@@ -40,14 +30,6 @@ class Permission extends Model
     }
 
     // ========== SCOPES ==========
-
-    /**
-     * Scope to filter permissions by tenant.
-     */
-    public function scopeOfTenant($query, $tenantId)
-    {
-        return $query->where('tenant_id', $tenantId);
-    }
 
     /**
      * Scope to filter permissions by resource.
@@ -67,4 +49,3 @@ class Permission extends Model
         return "{$this->resource}.{$this->action}";
     }
 }
-

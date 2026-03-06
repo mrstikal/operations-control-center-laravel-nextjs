@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         // Create incidents table only if it doesn't exist
-        if (!Schema::hasTable('incidents')) {
+        if (! Schema::hasTable('incidents')) {
             Schema::create('incidents', function (Blueprint $table) {
                 $table->id();
                 $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
@@ -132,4 +132,3 @@ return new class extends Migration
         Schema::dropIfExists('incidents');
     }
 };
-

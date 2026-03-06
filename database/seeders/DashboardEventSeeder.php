@@ -13,11 +13,15 @@ class DashboardEventSeeder extends Seeder
 {
     public function run(): void
     {
-        $tenant = Tenant::where('slug', 'default')->first();
-        if (!$tenant) return;
+        $tenant = Tenant::where('name', 'Default Tenant')->first();
+        if (! $tenant) {
+            return;
+        }
 
         $users = User::where('tenant_id', $tenant->id)->limit(3)->get();
-        if ($users->isEmpty()) return;
+        if ($users->isEmpty()) {
+            return;
+        }
 
         $contracts = Contract::where('tenant_id', $tenant->id)
             ->whereIn('contract_number', ['CT-2026-001', 'CT-2026-004', 'CT-2026-008'])
@@ -146,4 +150,3 @@ class DashboardEventSeeder extends Seeder
         }
     }
 }
-

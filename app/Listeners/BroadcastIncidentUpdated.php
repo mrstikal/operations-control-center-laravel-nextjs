@@ -22,4 +22,3 @@ class BroadcastIncidentUpdated implements ShouldQueue
         // Laravel automaticky broadcastuje
     }
 }
-

@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AssetAuditTrail extends Model
 {
+    // Existing schema uses singular table name.
+    protected $table = 'asset_audit_trail';
+
     public $timestamps = true;
 
     protected $fillable = [
@@ -42,5 +45,32 @@ class AssetAuditTrail extends Model
     {
         return $this->belongsTo(User::class);
     }
-}
 
+    // ========== SCOPES ==========
+
+    /**
+     * Scope to filter by action.
+     */
+    public function scopeByAction($query, ?string $action)
+    {
+        return $query->when($action, fn ($q) => $q->where('action', $action));
+    }
+
+    /**
+     * Scope to filter by user.
+     */
+    public function scopeByUser($query, $userId)
+    {
+        return $query->when($userId, fn ($q) => $q->where('user_id', $userId));
+    }
+
+    /**
+     * Scope to filter by action timestamp range.
+     */
+    public function scopeBetweenDates($query, ?string $from, ?string $to)
+    {
+        return $query
+            ->when($from, fn ($q) => $q->where('action_at', '>=', $from))
+            ->when($to, fn ($q) => $q->where('action_at', '<=', $to));
+    }
+}

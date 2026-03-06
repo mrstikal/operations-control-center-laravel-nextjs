@@ -2,11 +2,14 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Asset;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * AssetResource - API Resource pro Asset model
+ *
+ * @mixin Asset
  */
 class AssetResource extends JsonResource
 {
@@ -31,6 +34,13 @@ class AssetResource extends JsonResource
             }),
             'location' => $this->location,
             'department' => $this->department,
+            'assigned_to_id' => $this->assigned_to,
+            'assigned_to' => $this->whenLoaded('assignedTo', function () {
+                return $this->assignedTo ? [
+                    'id' => $this->assignedTo->id,
+                    'name' => $this->assignedTo->name,
+                ] : null;
+            }),
             'manufacturer' => $this->manufacturer,
             'model' => $this->model,
             'acquisition_date' => $this->acquisition_date?->toDateString(),
@@ -44,9 +54,16 @@ class AssetResource extends JsonResource
             'is_warranty_expired' => $this->isWarrantyExpired(),
             'days_until_maintenance' => $this->daysUntilMaintenance(),
             'specifications' => $this->specifications ?? [],
+            'tenant' => $this->whenLoaded('tenant', function () {
+                return $this->tenant ? [
+                    'id' => $this->tenant->id,
+                    'name' => $this->tenant->name,
+                    'deleted_at' => $this->tenant->deleted_at?->toIso8601String(),
+                ] : null;
+            }),
             'created_at' => $this->created_at->toIso8601String(),
             'updated_at' => $this->updated_at->toIso8601String(),
+            'deleted_at' => $this->deleted_at?->toIso8601String(),
         ];
     }
 }
-

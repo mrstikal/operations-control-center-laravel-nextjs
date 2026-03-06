@@ -25,6 +25,8 @@ class EmployeeShift extends Model
 
     /**
      * Get the employee profile.
+     *
+     * @return BelongsTo<EmployeeProfile, $this>
      */
     public function employee(): BelongsTo
     {
@@ -33,6 +35,8 @@ class EmployeeShift extends Model
 
     /**
      * Get the shift.
+     *
+     * @return BelongsTo<Shift, $this>
      */
     public function shift(): BelongsTo
     {
@@ -47,9 +51,9 @@ class EmployeeShift extends Model
     public function isCurrentlyActive(): bool
     {
         $today = now()->toDateString();
+
         return $this->is_active
             && $this->start_date->toDateString() <= $today
-            && (!$this->end_date || $this->end_date->toDateString() >= $today);
+            && (! $this->end_date || $this->end_date->toDateString() >= $today);
     }
 }
-

@@ -61,4 +61,3 @@ class IncidentComment extends Model
         return $query->where('is_internal', true);
     }
 }
-

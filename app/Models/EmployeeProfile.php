@@ -14,8 +14,7 @@ class EmployeeProfile extends Model
 
     protected $fillable = [
         'user_id',
-        'tenant_id',
-        'department',
+        'department_id',
         'position',
         'hire_date',
         'available_hours_per_week',
@@ -39,6 +38,8 @@ class EmployeeProfile extends Model
 
     /**
      * Get the user this profile belongs to.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {
@@ -46,15 +47,19 @@ class EmployeeProfile extends Model
     }
 
     /**
-     * Get the tenant this profile belongs to.
+     * Get the department this profile belongs to (when FK is used).
+     *
+     * @return BelongsTo<Department, $this>
      */
-    public function tenant(): BelongsTo
+    public function department(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Department::class);
     }
 
     /**
      * Get all shifts for this employee.
+     *
+     * @return HasMany<EmployeeShift, $this>
      */
     public function shifts(): HasMany
     {
@@ -63,6 +68,8 @@ class EmployeeProfile extends Model
 
     /**
      * Get all time off requests.
+     *
+     * @return HasMany<TimeOffRequest, $this>
      */
     public function timeOffRequests(): HasMany
     {
@@ -71,6 +78,8 @@ class EmployeeProfile extends Model
 
     /**
      * Get workload records.
+     *
+     * @return HasMany<Workload, $this>
      */
     public function workload(): HasMany
     {
@@ -80,11 +89,17 @@ class EmployeeProfile extends Model
     // ========== SCOPES ==========
 
     /**
-     * Scope to filter by department.
+     * Scope to filter by department (name or ID).
      */
     public function scopeByDepartment($query, $department)
     {
-        return $query->where('department', $department);
+        if (is_numeric($department)) {
+            return $query->where('department_id', (int) $department);
+        }
+
+        return $query->whereHas('department', function ($q) use ($department) {
+            $q->where('name', $department);
+        });
     }
 
     /**
@@ -143,4 +158,3 @@ class EmployeeProfile extends Model
             ->first();
     }
 }
-

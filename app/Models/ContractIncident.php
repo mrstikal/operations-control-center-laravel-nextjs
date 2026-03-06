@@ -82,4 +82,3 @@ class ContractIncident extends Model
         return $this->status === 'resolved' || $this->status === 'closed';
     }
 }
-

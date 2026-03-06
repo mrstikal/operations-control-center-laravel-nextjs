@@ -79,4 +79,3 @@ class ActivityLog extends Model
         return $query->where('created_at', '>=', now()->subMinutes($minutes));
     }
 }
-

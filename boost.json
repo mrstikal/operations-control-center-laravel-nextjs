@@ -7,7 +7,6 @@
     "mcp": true,
     "sail": false,
     "skills": [
-        "pest-testing",
-        "tailwindcss-development"
+        "pest-testing"
     ]
 }

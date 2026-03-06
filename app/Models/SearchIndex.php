@@ -2,11 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SearchIndex extends Model
 {
+    protected $table = 'search_index';
+
+    public $timestamps = false;
+
     protected $fillable = [
         'tenant_id',
         'indexable_type',
@@ -46,9 +51,19 @@ class SearchIndex extends Model
     /**
      * Scope for fulltext search.
      */
-    public function scopeSearch($query, $term)
+    public function scopeSearch(Builder $query, ?string $term): Builder
     {
-        return $query->whereRaw("MATCH(searchable_text) AGAINST(? IN BOOLEAN MODE)", [$term]);
+        $normalizedTerm = trim((string) $term);
+        if ($normalizedTerm === '') {
+            return $query;
+        }
+
+        $driver = $query->getModel()->getConnection()->getDriverName();
+        if ($driver === 'mysql') {
+            return $query->whereRaw('MATCH(searchable_text) AGAINST(? IN BOOLEAN MODE)', [$normalizedTerm]);
+        }
+
+        return $query->where('searchable_text', 'like', '%'.$normalizedTerm.'%');
     }
 
     /**
@@ -59,4 +74,3 @@ class SearchIndex extends Model
         return $query->where('tenant_id', $tenantId);
     }
 }
-

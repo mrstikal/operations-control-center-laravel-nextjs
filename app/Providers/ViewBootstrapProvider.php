@@ -23,9 +23,8 @@ class ViewBootstrapProvider extends ServiceProvider
     {
         // Register View service BEFORE RoutingServiceProvider initializes
         // This is the critical step - must happen in register() phase
-        if (!$this->app->bound('view')) {
+        if (! $this->app->bound('view')) {
             $this->app->register(ViewServiceProvider::class);
         }
     }
 }
-

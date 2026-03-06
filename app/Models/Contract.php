@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Contract extends Model
 {
-    use HasFactory, SoftDeletes;
+    use BelongsToTenant, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'tenant_id',
@@ -49,14 +51,19 @@ class Contract extends Model
 
     /**
      * Get the tenant this contract belongs to.
+     *
+     * @return BelongsTo<Tenant, $this>
      */
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        // Keep tenant context visible even when tenant is soft-deleted.
+        return $this->belongsTo(Tenant::class)->withTrashed();
     }
 
     /**
      * Get the assigned user.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function assignedTo(): BelongsTo
     {
@@ -65,6 +72,8 @@ class Contract extends Model
 
     /**
      * Get the client user.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function client(): BelongsTo
     {
@@ -107,6 +116,104 @@ class Contract extends Model
     }
 
     /**
+     * Scope to filter by status including deleted pseudo-status.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeFilterStatus(Builder $query, ?string $status): Builder
+    {
+        if ($status === 'deleted') {
+            return $query->onlyTrashed();
+        }
+
+        if ($status) {
+            return $query->where('status', $status);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Scope to filter by priority.
+     */
+    public function scopeFilterPriority(Builder $query, ?string $priority): Builder
+    {
+        if (! $priority) {
+            return $query;
+        }
+
+        return $query->where('priority', $priority);
+    }
+
+    /**
+     * Scope to filter by incidents presence.
+     */
+    public function scopeWithIncidentsPresence(Builder $query, ?string $presence): Builder
+    {
+        return match ($presence) {
+            'with' => $query->has('incidents'),
+            'without' => $query->doesntHave('incidents'),
+            default => $query,
+        };
+    }
+
+    /**
+     * Scope to search contracts.
+     */
+    public function scopeSearch(Builder $query, ?string $search, string $driver): Builder
+    {
+        if (! $search) {
+            return $query;
+        }
+
+        if ($driver === 'mysql') {
+            return $query->whereRaw(
+                'MATCH(title, description) AGAINST(? IN BOOLEAN MODE)',
+                [$search]
+            );
+        }
+
+        $like = '%'.$search.'%';
+
+        return $query->where(function (Builder $innerQuery) use ($like): void {
+            $innerQuery->where('title', 'like', $like)
+                ->orWhere('description', 'like', $like);
+        });
+    }
+
+    /**
+     * Scope to apply API index sorting.
+     */
+    public function scopeSortForIndex(Builder $query, ?string $sortKey, string $sortDirection = 'asc'): Builder
+    {
+        return match ($sortKey) {
+            'priority' => $query->orderByRaw(
+                "CASE priority
+                    WHEN 'low' THEN 1
+                    WHEN 'medium' THEN 2
+                    WHEN 'high' THEN 3
+                    WHEN 'critical' THEN 4
+                    ELSE 999 END {$sortDirection}"
+            ),
+            'status' => $query->orderByRaw(
+                "CASE status
+                    WHEN 'draft' THEN 1
+                    WHEN 'approved' THEN 2
+                    WHEN 'in_progress' THEN 3
+                    WHEN 'blocked' THEN 4
+                    WHEN 'done' THEN 5
+                    ELSE 999 END {$sortDirection}"
+            ),
+            'incidents_count' => $query->orderBy('incidents_count', $sortDirection),
+            'due_date' => $query->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END ASC')
+                ->orderBy('due_date', $sortDirection),
+            'budget' => $query->orderBy('budget', $sortDirection),
+            default => $query->orderBy('created_at', 'desc'),
+        };
+    }
+
+    /**
      * Scope to filter SLA breached contracts.
      */
     public function scopeSlaBreach($query)
@@ -136,6 +243,8 @@ class Contract extends Model
             'contract_id' => $this->id,
             'old_status' => $oldStatus,
             'new_status' => $newStatus,
+            'from_status' => $oldStatus,
+            'to_status' => $newStatus,
             'changed_by' => $user->id,
             'reason' => $reason,
             'changed_at' => now(),
@@ -155,7 +264,10 @@ class Contract extends Model
      */
     public function getRemainingBudget()
     {
-        if (!$this->budget) return null;
+        if (! $this->budget) {
+            return null;
+        }
+
         return $this->budget - $this->spent;
     }
 
@@ -164,8 +276,10 @@ class Contract extends Model
      */
     public function getBudgetUsagePercent(): float
     {
-        if (!$this->budget) return 0;
+        if (! $this->budget) {
+            return 0;
+        }
+
         return ($this->spent / $this->budget) * 100;
     }
 }
-

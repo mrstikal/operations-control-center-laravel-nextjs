@@ -3,13 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Shift extends Model
 {
     protected $fillable = [
-        'tenant_id',
         'name',
         'start_time',
         'end_time',
@@ -26,20 +25,22 @@ class Shift extends Model
     // ========== RELATIONS ==========
 
     /**
-     * Get the tenant this shift belongs to.
-     */
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
-
-    /**
      * Get all employee assignments for this shift.
      */
     public function employees(): BelongsToMany
     {
         return $this->belongsToMany(EmployeeProfile::class, 'employee_shifts')
             ->withTimestamps();
+    }
+
+    /**
+     * Get all employee shift assignments for this shift.
+     *
+     * @return HasMany<EmployeeShift, $this>
+     */
+    public function employeeShifts(): HasMany
+    {
+        return $this->hasMany(EmployeeShift::class, 'shift_id');
     }
 
     // ========== SCOPES ==========
@@ -69,7 +70,7 @@ class Shift extends Model
     {
         $start = now()->startOfDay()->add('hours', (int) $this->start_time);
         $end = now()->startOfDay()->add('hours', (int) $this->end_time);
+
         return $start->diffInMinutes($end) / 60;
     }
 }
-

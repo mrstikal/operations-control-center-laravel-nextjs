@@ -23,4 +23,3 @@ class BroadcastContractUpdated implements ShouldQueue
         // Laravel automaticky broadcastuje
     }
 }
-

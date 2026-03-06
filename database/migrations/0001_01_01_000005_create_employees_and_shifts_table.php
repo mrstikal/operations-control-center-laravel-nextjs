@@ -11,12 +11,22 @@ return new class extends Migration
      */
     public function up(): void
     {
+        Schema::create('departments', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
+            $table->string('name');
+            $table->string('description')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
+            $table->unique(['tenant_id', 'name']);
+            $table->index(['tenant_id', 'is_active']);
+        });
+
         Schema::create('employee_profiles', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->unique()->constrained('users')->cascadeOnDelete();
-            $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
 
-            $table->string('department')->nullable()->index();
+            $table->foreignId('department_id')->nullable()->constrained('departments')->nullOnDelete();
             $table->string('position')->nullable();
             $table->date('hire_date')->nullable();
 
@@ -40,7 +50,6 @@ return new class extends Migration
 
         Schema::create('shifts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
             $table->string('name')->index();
             $table->time('start_time');
             $table->time('end_time');
@@ -48,7 +57,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true)->index();
             $table->timestamps();
-            $table->unique(['tenant_id', 'name']);
+            $table->unique(['name']);
         });
 
         Schema::create('employee_shifts', function (Blueprint $table) {
@@ -102,6 +111,6 @@ return new class extends Migration
         Schema::dropIfExists('employee_shifts');
         Schema::dropIfExists('shifts');
         Schema::dropIfExists('employee_profiles');
+        Schema::dropIfExists('departments');
     }
 };
-

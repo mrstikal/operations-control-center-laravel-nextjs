@@ -4,6 +4,7 @@ use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\CheckPermission;
 use App\Http\Middleware\CheckRole;
 use App\Http\Middleware\EnforceTenantIsolation;
+use App\Http\Middleware\RecordApiStatusMetrics;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -25,11 +26,14 @@ $app = Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->statefulApi();
+
         $middleware->alias([
             'auth' => Authenticate::class,
             'check-permission' => CheckPermission::class,
             'check-role' => CheckRole::class,
             'tenant-isolation' => EnforceTenantIsolation::class,
+            'record-api-metrics' => RecordApiStatusMetrics::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

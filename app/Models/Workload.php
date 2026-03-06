@@ -28,6 +28,8 @@ class Workload extends Model
 
     /**
      * Get the employee profile.
+     *
+     * @return BelongsTo<EmployeeProfile, $this>
      */
     public function employee(): BelongsTo
     {
@@ -59,12 +61,20 @@ class Workload extends Model
      */
     public function calculateUtilization(): float
     {
-        if (!$this->employee || !$this->employee->available_hours_per_week) {
-            return 0;
+        $employee = $this->employee;
+
+        if (! $employee) {
+            return 0.0;
         }
 
-        $dailyCapacity = $this->employee->available_hours_per_week / 5;
-        return ($this->hours_allocated / $dailyCapacity) * 100;
+        $availableHoursPerWeek = $employee->getAttribute('available_hours_per_week');
+        if (! is_numeric($availableHoursPerWeek) || (float) $availableHoursPerWeek <= 0.0) {
+            return 0.0;
+        }
+
+        $dailyCapacity = (float) $availableHoursPerWeek / 5;
+        $hoursAllocated = $this->getAttribute('hours_allocated');
+
+        return ((float) $hoursAllocated / $dailyCapacity) * 100;
     }
 }
-

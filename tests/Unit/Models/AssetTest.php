@@ -90,4 +90,3 @@ class AssetTest extends TestCase
         ]);
     }
 }
-

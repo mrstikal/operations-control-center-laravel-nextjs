@@ -18,8 +18,8 @@ abstract class BasePolicy
      */
     protected function authorize(User $user, string $resource, string $action): bool
     {
-        // Superadmin má všechno
-        if ($user->role === 'admin' && $user->isAdmin()) {
+        // Admin/Superadmin má všechno
+        if ($user->isAdmin()) {
             return true;
         }
 
@@ -55,8 +55,9 @@ abstract class BasePolicy
         $maxLevel = 0;
 
         foreach ($userRoles as $role) {
-            if (is_numeric($role->level)) {
-                $maxLevel = max($maxLevel, $role->level);
+            $level = $role->getAttribute('level');
+            if (is_numeric($level)) {
+                $maxLevel = max($maxLevel, (int) $level);
             }
         }
 
@@ -66,17 +67,28 @@ abstract class BasePolicy
     /**
      * Kontrola tenant isolation
      */
-    protected function sameTenantt($user, $model): bool
+    protected function belongsToTenant(User $user, $model): bool
     {
-        if (!method_exists($model, 'getAttribute')) {
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        if (! method_exists($model, 'getAttribute')) {
             return true; // Non-eloquent model, skip check
         }
 
-        if (!$model->getAttribute('tenant_id')) {
+        if (! $model->getAttribute('tenant_id')) {
             return true; // Model bez tenant_id, skip check
         }
 
         return $user->tenant_id === $model->getAttribute('tenant_id');
     }
-}
 
+    /**
+     * Backward compatible alias for tenant checks.
+     */
+    protected function sameTenant(User $user, $model): bool
+    {
+        return $this->belongsToTenant($user, $model);
+    }
+}

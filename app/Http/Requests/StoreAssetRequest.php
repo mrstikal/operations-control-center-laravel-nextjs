@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\ExistsInTenant;
+use App\Services\Tenancy\TenantAccessService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreAssetRequest extends FormRequest
 {
@@ -19,8 +22,19 @@ class StoreAssetRequest extends FormRequest
      */
     public function rules(): array
     {
+        $tenantId = $this->resolvedTenantId();
+
         return [
-            'category_id' => 'required|exists:asset_categories,id',
+            'tenant_id' => [
+                'nullable',
+                'integer',
+                'exists:tenants,id',
+                Rule::prohibitedIf(fn () => ! $this->user()?->isAdmin()),
+            ],
+            'category_id' => [
+                'required',
+                new ExistsInTenant('asset_categories', 'id', $tenantId),
+            ],
             'name' => 'required|string|max:255',
             'asset_tag' => 'required|string|unique:assets,asset_tag',
             'serial_number' => 'nullable|string|unique:assets,serial_number',
@@ -46,8 +60,17 @@ class StoreAssetRequest extends FormRequest
             'category_id.required' => 'Kategorie je povinná',
             'name.required' => 'Název asetu je povinný',
             'asset_tag.required' => 'Asset tag je povinný',
-            'asset_tag.unique' => 'Tento asset tag již existuje',
+            'asset_tag.unique' => 'The asset tag has already been taken.',
         ];
     }
-}
 
+    private function resolvedTenantId(): int
+    {
+        $user = $this->user();
+        if (! $user) {
+            return 0;
+        }
+
+        return app(TenantAccessService::class)->resolveTenantId($user, $this);
+    }
+}

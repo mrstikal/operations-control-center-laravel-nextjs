@@ -9,22 +9,18 @@ use Tests\TestCase;
 class UserApiTest extends TestCase
 {
     protected User $admin;
+
     protected User $manager;
-    protected string $adminToken;
-    protected string $managerToken;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->admin = User::factory()->create(['tenant_id' => 1, 'role' => 'admin']);
-        $this->manager = User::factory()->create(['tenant_id' => 1, 'role' => 'manager']);
+        $this->admin = User::factory()->create(['tenant_id' => 1]);
+        $this->manager = User::factory()->create(['tenant_id' => 1]);
 
         $this->admin->roles()->attach(Role::where('name', 'Admin')->first());
         $this->manager->roles()->attach(Role::where('name', 'Manager')->first());
-
-        $this->adminToken = $this->admin->createToken('test')->plainTextToken;
-        $this->managerToken = $this->manager->createToken('test')->plainTextToken;
     }
 
     /**
@@ -34,7 +30,7 @@ class UserApiTest extends TestCase
     {
         User::factory(5)->create(['tenant_id' => 1]);
 
-        $response = $this->withHeader('Authorization', "Bearer {$this->adminToken}")
+        $response = $this->actingAs($this->admin, 'web')
             ->getJson('/api/users');
 
         $response->assertStatus(200)
@@ -46,7 +42,7 @@ class UserApiTest extends TestCase
      */
     public function test_can_view_user_profile(): void
     {
-        $response = $this->withHeader('Authorization', "Bearer {$this->adminToken}")
+        $response = $this->actingAs($this->admin, 'web')
             ->getJson('/api/users/profile/me');
 
         $response->assertStatus(200)
@@ -59,7 +55,7 @@ class UserApiTest extends TestCase
      */
     public function test_can_update_own_profile(): void
     {
-        $response = $this->withHeader('Authorization', "Bearer {$this->adminToken}")
+        $response = $this->actingAs($this->admin, 'web')
             ->putJson("/api/users/{$this->admin->id}/update-profile", [
                 'phone' => '+420123456789',
                 'bio' => 'Senior technician',
@@ -79,7 +75,7 @@ class UserApiTest extends TestCase
         $user = User::factory()->create(['tenant_id' => 1]);
         $techRole = Role::where('name', 'Technician')->first();
 
-        $response = $this->withHeader('Authorization', "Bearer {$this->adminToken}")
+        $response = $this->actingAs($this->admin, 'web')
             ->postJson("/api/users/{$user->id}/assign-role", [
                 'role_id' => $techRole->id,
             ]);
@@ -97,7 +93,7 @@ class UserApiTest extends TestCase
         $techRole = Role::where('name', 'Technician')->first();
         $user->roles()->attach($techRole);
 
-        $response = $this->withHeader('Authorization', "Bearer {$this->adminToken}")
+        $response = $this->actingAs($this->admin, 'web')
             ->deleteJson("/api/users/{$user->id}/remove-role/{$techRole->id}");
 
         $response->assertStatus(200);
@@ -112,7 +108,7 @@ class UserApiTest extends TestCase
         $user = User::factory()->create(['tenant_id' => 1]);
         $adminRole = Role::where('name', 'Admin')->first();
 
-        $response = $this->withHeader('Authorization', "Bearer {$this->managerToken}")
+        $response = $this->actingAs($this->manager, 'web')
             ->postJson("/api/users/{$user->id}/assign-role", [
                 'role_id' => $adminRole->id,
             ]);
@@ -128,10 +124,10 @@ class UserApiTest extends TestCase
         $adminRole = Role::where('name', 'Admin')->first();
         $managerRole = Role::where('name', 'Manager')->first();
 
-        User::factory(3)->create(['tenant_id' => 1])->each(fn($u) => $u->roles()->attach($adminRole));
-        User::factory(2)->create(['tenant_id' => 1])->each(fn($u) => $u->roles()->attach($managerRole));
+        User::factory(3)->create(['tenant_id' => 1])->each(fn ($u) => $u->roles()->attach($adminRole));
+        User::factory(2)->create(['tenant_id' => 1])->each(fn ($u) => $u->roles()->attach($managerRole));
 
-        $response = $this->withHeader('Authorization', "Bearer {$this->adminToken}")
+        $response = $this->actingAs($this->admin, 'web')
             ->getJson('/api/users?role=Admin');
 
         $response->assertStatus(200)
@@ -146,11 +142,29 @@ class UserApiTest extends TestCase
         User::factory()->create(['tenant_id' => 1, 'name' => 'John Technician']);
         User::factory()->create(['tenant_id' => 1, 'name' => 'Jane Developer']);
 
-        $response = $this->withHeader('Authorization', "Bearer {$this->adminToken}")
-            ->getJson('/api/users?search=John');
+        $response = $this->actingAs($this->admin, 'web')
+            ->getJson('/api/users?search=John Technician');
 
         $response->assertStatus(200)
             ->assertJsonPath('pagination.total', 1);
     }
-}
 
+    public function test_can_view_user_detail(): void
+    {
+        $target = User::factory()->create(['tenant_id' => 1]);
+
+        $this->actingAs($this->admin, 'web')
+            ->getJson('/api/users/'.$target->id)
+            ->assertStatus(200)
+            ->assertJsonPath('data.id', $target->id);
+    }
+
+    public function test_cannot_view_user_from_other_tenant(): void
+    {
+        $foreignUser = User::factory()->create(['tenant_id' => 999]);
+
+        $this->actingAs($this->admin, 'web')
+            ->getJson('/api/users/'.$foreignUser->id)
+            ->assertStatus(403);
+    }
+}

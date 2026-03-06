@@ -18,21 +18,20 @@ class CheckPermission
     /**
      * Handle an incoming request.
      */
-    public function handle(Request $request, Closure $next, string $resource = null, string $action = null): Response
+    public function handle(Request $request, Closure $next, ?string $resource = null, ?string $action = null): Response
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        if (!$resource || !$action) {
+        if (! $resource || ! $action) {
             return $next($request);
         }
 
-        if (!auth()->user()->hasPermission($resource, $action)) {
+        if (! auth()->user()->hasPermission($resource, $action)) {
             return response()->json(['message' => "Permission denied: {$resource}.{$action}"], 403);
         }
 
         return $next($request);
     }
 }
-

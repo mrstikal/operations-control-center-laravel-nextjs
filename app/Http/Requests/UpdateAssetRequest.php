@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\ExistsInTenant;
+use App\Services\Tenancy\TenantAccessService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateAssetRequest extends FormRequest
 {
@@ -19,10 +22,23 @@ class UpdateAssetRequest extends FormRequest
      */
     public function rules(): array
     {
+        $tenantId = $this->resolvedTenantId();
+
         return [
+            'tenant_id' => [
+                'sometimes',
+                'integer',
+                'exists:tenants,id',
+                Rule::prohibitedIf(fn () => ! $this->user()?->isAdmin()),
+            ],
             'name' => 'sometimes|string|max:255',
-            'serial_number' => 'sometimes|string|unique:assets,serial_number,' . $this->asset->id,
+            'asset_tag' => 'sometimes|string|max:100|unique:assets,asset_tag,'.$this->asset->id,
+            'serial_number' => 'sometimes|string|unique:assets,serial_number,'.$this->asset->id,
             'description' => 'nullable|string',
+            'category_id' => [
+                'sometimes',
+                new ExistsInTenant('asset_categories', 'id', $tenantId),
+            ],
             'location' => 'nullable|string|max:255',
             'department' => 'nullable|string|max:100',
             'manufacturer' => 'nullable|string|max:100',
@@ -36,5 +52,21 @@ class UpdateAssetRequest extends FormRequest
             'custom_fields' => 'nullable|json',
         ];
     }
-}
 
+    private function resolvedTenantId(): int
+    {
+        $user = $this->user();
+        if (! $user) {
+            return 0;
+        }
+
+        $routeAsset = $this->route('asset');
+        $routeTenantId = (int) data_get($routeAsset, 'tenant_id', 0);
+
+        return app(TenantAccessService::class)->resolveTenantId(
+            $user,
+            $this,
+            $routeTenantId > 0 ? $routeTenantId : null
+        );
+    }
+}

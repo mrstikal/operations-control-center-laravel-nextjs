@@ -2,7 +2,14 @@
 
 namespace App\Exceptions;
 
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -23,30 +30,105 @@ class Handler extends ExceptionHandler
      */
     public function register(): void
     {
-        $this->reportable(function (Throwable $e) {
+        $this->reportable(function (Throwable $e): void {
             //
         });
     }
 
     /**
-     * Render exception - API only mode
+     * Render an exception into an HTTP response.
+     *
+     * For JSON requests every exception is mapped to a consistent envelope:
+     *   { "success": false, "message": "...", "errors": {...} }
      */
-    public function render($request, Throwable $exception)
+    public function render($request, Throwable $exception): \Symfony\Component\HttpFoundation\Response
     {
-        // Always return JSON for API (avoid View service dependency)
-        if ($request->expectsJson() || $request->wantsJson()) {
-            $code = $exception->getCode() ?: 500;
-
-            return new \Illuminate\Http\JsonResponse([
-                'error' => true,
-                'message' => $exception->getMessage(),
-                'code' => $code,
-            ], $code);
+        if ($this->isJsonRequest($request)) {
+            return $this->renderJsonException($request, $exception);
         }
 
         return parent::render($request, $exception);
     }
+
+    // -------------------------------------------------------------------------
+
+    private function isJsonRequest(Request $request): bool
+    {
+        return $request->expectsJson() || $request->wantsJson();
+    }
+
+    private function renderJsonException(Request $request, Throwable $exception): JsonResponse
+    {
+        // 1. Unauthenticated
+        if ($exception instanceof AuthenticationException) {
+            return $this->jsonError('Unauthenticated.', 401);
+        }
+
+        // 2. Unauthorized (Gate / Policy)
+        if ($exception instanceof AuthorizationException) {
+            return $this->jsonError($exception->getMessage() ?: 'This action is unauthorized.', 403);
+        }
+
+        // 3. Model not found (Eloquent route-model binding)
+        if ($exception instanceof ModelNotFoundException) {
+            $model = class_basename($exception->getModel());
+
+            return $this->jsonError("{$model} not found.", 404);
+        }
+
+        // 4. Validation
+        if ($exception instanceof ValidationException) {
+            return $this->jsonError(
+                $exception->getMessage(),
+                422,
+                ['errors' => $exception->errors()]
+            );
+        }
+
+        // 5. Generic HTTP exceptions (NotFoundHttpException, MethodNotAllowedHttpException …)
+        if ($exception instanceof HttpException) {
+            $status = $exception->getStatusCode();
+            $message = $exception->getMessage() ?: $this->defaultHttpMessage($status);
+
+            return $this->jsonError($message, $status);
+        }
+
+        // 6. Everything else – hide internals outside local/testing
+        $debug = config('app.debug');
+        $message = $debug ? $exception->getMessage() : 'Server Error.';
+        $extra = $debug ? ['exception' => get_class($exception), 'trace' => collect($exception->getTrace())->take(10)->all()] : [];
+
+        return $this->jsonError($message, 500, $extra);
+    }
+
+    /**
+     * Build the canonical API error envelope.
+     *
+     * @param  array<string, mixed>  $extra
+     */
+    private function jsonError(string $message, int $status, array $extra = []): JsonResponse
+    {
+        return new JsonResponse(
+            array_merge(['success' => false, 'message' => $message], $extra),
+            $status
+        );
+    }
+
+    private function defaultHttpMessage(int $status): string
+    {
+        return match ($status) {
+            400 => 'Bad Request.',
+            401 => 'Unauthenticated.',
+            403 => 'Forbidden.',
+            404 => 'Not Found.',
+            405 => 'Method Not Allowed.',
+            408 => 'Request Timeout.',
+            409 => 'Conflict.',
+            422 => 'Unprocessable Entity.',
+            429 => 'Too Many Requests.',
+            500 => 'Server Error.',
+            503 => 'Service Unavailable.',
+            default => "HTTP Error {$status}.",
+        };
+    }
 }
-
-
-

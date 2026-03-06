@@ -35,4 +35,3 @@ class Authenticate extends BaseAuthenticate
         parent::unauthenticated($request, $guards);
     }
 }
-

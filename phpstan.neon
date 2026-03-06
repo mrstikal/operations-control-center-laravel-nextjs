@@ -1,0 +1,26 @@
+includes:
+    - ./vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app
+        - config
+        - database
+        - routes
+        - tests
+
+    level: 5
+
+    tmpDir: storage/phpstan
+
+    reportUnmatchedIgnoredErrors: false
+
+    ignoreErrors:
+        -
+            identifier: larastan.noEnvCallsOutsideOfConfig
+        -
+            identifier: property.notFound
+            path: tests/Unit/Models/*
+        -
+            identifier: method.alreadyNarrowedType
+            path: tests/Unit/Models/*

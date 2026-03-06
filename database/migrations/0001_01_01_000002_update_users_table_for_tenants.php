@@ -16,11 +16,10 @@ return new class extends Migration
             $table->foreignId('tenant_id')
                 ->after('id')
                 ->constrained('tenants')
-                ->cascadeOnDelete()
-                ->index();
+                ->cascadeOnDelete();
 
             $table->string('employee_id')->nullable()->after('name')->unique();
-            $table->enum('role', ['admin', 'manager', 'technician', 'viewer'])->default('viewer')->index();
+            $table->enum('role', ['superadmin', 'admin', 'manager', 'technician', 'viewer'])->default('viewer')->index();
             $table->string('phone')->nullable();
             $table->text('bio')->nullable();
             $table->string('avatar_url')->nullable();
@@ -63,7 +62,7 @@ return new class extends Migration
 
                 $existing = array_values(array_filter($columns, fn ($c) => Schema::hasColumn('users', $c)));
 
-                if (!empty($existing)) {
+                if (! empty($existing)) {
                     Schema::table('users', function (Blueprint $table) use ($existing) {
                         $table->dropColumn($existing);
                     });
@@ -91,4 +90,3 @@ return new class extends Migration
         });
     }
 };
-

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Incident extends Model
 {
-    use HasFactory, SoftDeletes;
+    use BelongsToTenant, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'tenant_id',
@@ -59,14 +61,19 @@ class Incident extends Model
 
     /**
      * Get the tenant this incident belongs to.
+     *
+     * @return BelongsTo<Tenant, $this>
      */
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        // Include archived (soft-deleted) tenants so historical incident rows keep tenant context.
+        return $this->belongsTo(Tenant::class)->withTrashed();
     }
 
     /**
      * Get the reporter.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function reportedBy(): BelongsTo
     {
@@ -75,6 +82,8 @@ class Incident extends Model
 
     /**
      * Get the assigned user.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function assignedTo(): BelongsTo
     {
@@ -83,6 +92,8 @@ class Incident extends Model
 
     /**
      * Get the escalated to user.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function escalatedTo(): BelongsTo
     {
@@ -91,6 +102,8 @@ class Incident extends Model
 
     /**
      * Get the related contract.
+     *
+     * @return BelongsTo<Contract, $this>
      */
     public function contract(): BelongsTo
     {
@@ -99,6 +112,8 @@ class Incident extends Model
 
     /**
      * Get the related asset.
+     *
+     * @return BelongsTo<Asset, $this>
      */
     public function asset(): BelongsTo
     {
@@ -107,6 +122,8 @@ class Incident extends Model
 
     /**
      * Get the timeline events.
+     *
+     * @return HasMany<IncidentTimeline, $this>
      */
     public function timeline(): HasMany
     {
@@ -116,6 +133,8 @@ class Incident extends Model
 
     /**
      * Get the assignments.
+     *
+     * @return HasMany<IncidentAssignment, $this>
      */
     public function assignments(): HasMany
     {
@@ -124,6 +143,8 @@ class Incident extends Model
 
     /**
      * Get the escalations.
+     *
+     * @return HasMany<IncidentEscalation, $this>
      */
     public function escalations(): HasMany
     {
@@ -133,6 +154,8 @@ class Incident extends Model
 
     /**
      * Get the comments.
+     *
+     * @return HasMany<IncidentComment, $this>
      */
     public function comments(): HasMany
     {
@@ -156,6 +179,109 @@ class Incident extends Model
     public function scopeByStatus($query, $status)
     {
         return $query->where('status', $status);
+    }
+
+    /**
+     * Scope to filter by status including deleted pseudo-status.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeFilterStatus(Builder $query, ?string $status): Builder
+    {
+        if ($status === 'deleted') {
+            return $query->onlyTrashed();
+        }
+
+        if ($status) {
+            return $query->where('status', $status);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Scope to filter by severity.
+     */
+    public function scopeFilterSeverity(Builder $query, ?string $severity): Builder
+    {
+        if (! $severity) {
+            return $query;
+        }
+
+        return $query->where('severity', $severity);
+    }
+
+    /**
+     * Scope to filter by priority.
+     */
+    public function scopeFilterPriority(Builder $query, ?string $priority): Builder
+    {
+        if (! $priority) {
+            return $query;
+        }
+
+        return $query->where('priority', $priority);
+    }
+
+    /**
+     * Scope to filter by SLA breached flag.
+     */
+    public function scopeFilterSlaBreached(Builder $query, mixed $slaBreached): Builder
+    {
+        if ($slaBreached === null || $slaBreached === '' || $slaBreached === false) {
+            return $query;
+        }
+
+        return $query->where('sla_breached', true);
+    }
+
+    /**
+     * Scope to search incidents.
+     */
+    public function scopeSearch(Builder $query, ?string $search, string $driver): Builder
+    {
+        if (! $search) {
+            return $query;
+        }
+
+        if ($driver === 'mysql') {
+            return $query->whereRaw('MATCH(title, description) AGAINST(? IN BOOLEAN MODE)', [$search]);
+        }
+
+        $like = '%'.$search.'%';
+
+        return $query->where(function (Builder $innerQuery) use ($like): void {
+            $innerQuery->where('title', 'like', $like)
+                ->orWhere('description', 'like', $like);
+        });
+    }
+
+    /**
+     * Scope to apply API index sorting.
+     */
+    public function scopeSortForIndex(Builder $query, ?string $sortKey, string $sortDirection = 'asc'): Builder
+    {
+        return match ($sortKey) {
+            'severity' => $query->orderByRaw(
+                "CASE severity
+                    WHEN 'low' THEN 1
+                    WHEN 'medium' THEN 2
+                    WHEN 'high' THEN 3
+                    WHEN 'critical' THEN 4
+                    ELSE 999 END {$sortDirection}"
+            ),
+            'status' => $query->orderByRaw(
+                "CASE status
+                    WHEN 'open' THEN 1
+                    WHEN 'in_progress' THEN 2
+                    WHEN 'escalated' THEN 3
+                    WHEN 'resolved' THEN 4
+                    WHEN 'closed' THEN 5
+                    ELSE 999 END {$sortDirection}"
+            ),
+            default => $query->orderBy('reported_at', 'desc'),
+        };
     }
 
     /**
@@ -187,25 +313,40 @@ class Incident extends Model
     /**
      * Assign incident to a user.
      */
-    public function assignTo($user, $assignedBy, $role = 'primary'): void
+    public function assignTo($user, $assignedBy, $role = 'primary', ?string $reason = null): void
     {
-        IncidentAssignment::create([
+        $assignment = IncidentAssignment::firstOrNew([
             'incident_id' => $this->id,
             'user_id' => $user->id,
-            'assigned_by' => $assignedBy->id,
             'role' => $role,
-            'assigned_at' => now(),
         ]);
+
+        $assignment->assigned_by = $assignedBy->id;
+        $assignment->assignment_reason = $reason;
+        $assignment->assigned_at = now();
+        $assignment->unassigned_at = null;
+        $assignment->save();
 
         if ($role === 'primary') {
             $this->update(['assigned_to' => $user->id]);
         }
+
+        $this->addTimelineEvent(
+            $assignedBy,
+            'assigned',
+            sprintf('Incident assigned to %s (%s)', $user->name, $role),
+            [
+                'assigned_to' => $user->id,
+                'role' => $role,
+                'reason' => $reason,
+            ]
+        );
     }
 
     /**
      * Escalate the incident.
      */
-    public function escalate($escalatedBy, $escalatedTo, $level, $reason): void
+    public function escalate($escalatedBy, $escalatedTo, $level, $reason, ?string $notes = null): void
     {
         IncidentEscalation::create([
             'incident_id' => $this->id,
@@ -213,6 +354,7 @@ class Incident extends Model
             'escalated_to' => $escalatedTo->id,
             'escalation_level' => $level,
             'reason' => $reason,
+            'notes' => $notes,
             'escalated_at' => now(),
         ]);
 
@@ -220,6 +362,21 @@ class Incident extends Model
             'status' => 'escalated',
             'escalated_to' => $escalatedTo->id,
         ]);
+
+        // Escalation creates/refreshes primary assignment to the escalated user.
+        $this->assignTo($escalatedTo, $escalatedBy, 'primary', $reason);
+
+        $this->addTimelineEvent(
+            $escalatedBy,
+            'escalated',
+            sprintf('Incident escalated to %s (%s)', $escalatedTo->name, $level),
+            [
+                'escalated_to' => $escalatedTo->id,
+                'escalation_level' => $level,
+                'reason' => $reason,
+                'notes' => $notes,
+            ]
+        );
     }
 
     /**
@@ -227,12 +384,21 @@ class Incident extends Model
      */
     public function addComment($user, $comment, $isInternal = false): IncidentComment
     {
-        return $this->comments()->create([
+        $created = $this->comments()->create([
             'user_id' => $user->id,
             'comment' => $comment,
             'is_internal' => $isInternal,
             'commented_at' => now(),
         ]);
+
+        $this->addTimelineEvent(
+            $user,
+            $isInternal ? 'note_added' : 'commented',
+            $isInternal ? 'Internal note added' : 'Comment added',
+            ['is_internal' => (bool) $isInternal]
+        );
+
+        return $created;
     }
 
     /**
@@ -247,6 +413,20 @@ class Incident extends Model
         } elseif ($newStatus === 'closed') {
             $this->update(['closed_at' => now()]);
         }
+    }
+
+    /**
+     * Add a timeline event row.
+     */
+    public function addTimelineEvent($user, string $eventType, string $message, array $metadata = []): IncidentTimeline
+    {
+        return $this->timeline()->create([
+            'user_id' => $user->id,
+            'event_type' => $eventType,
+            'message' => $message,
+            'metadata' => empty($metadata) ? null : $metadata,
+            'occurred_at' => now(),
+        ]);
     }
 
     /**
@@ -278,8 +458,10 @@ class Incident extends Model
      */
     public function remainingSlaTime(): ?int
     {
-        if (!$this->sla_resolution_deadline) return null;
+        if (! $this->sla_resolution_deadline) {
+            return null;
+        }
+
         return max(0, (int) now()->diffInMinutes($this->sla_resolution_deadline));
     }
 }
-

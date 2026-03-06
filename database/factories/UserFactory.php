@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -31,6 +33,28 @@ class UserFactory extends Factory
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
         ];
+    }
+
+    public function configure(): static
+    {
+        return $this->afterCreating(function (User $user) {
+            $viewerRole = Role::whereIn('name', ['Viewer', 'Viewer – Management'])
+                ->orderByRaw("CASE WHEN name = 'Viewer' THEN 0 ELSE 1 END")
+                ->first();
+
+            if (! $viewerRole) {
+                $viewerRole = Role::create([
+                    'name' => 'Viewer',
+                    'description' => 'Auto-created viewer role for tests',
+                    'level' => 1,
+                    'is_system' => true,
+                ]);
+            }
+
+            if (! $user->roles()->where('roles.id', $viewerRole->id)->exists()) {
+                $user->roles()->attach($viewerRole->id);
+            }
+        });
     }
 
     /**

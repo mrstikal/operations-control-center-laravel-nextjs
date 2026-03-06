@@ -12,6 +12,9 @@ use App\Listeners\BroadcastAssetUpdated;
 use App\Listeners\BroadcastContractUpdated;
 use App\Listeners\BroadcastIncidentUpdated;
 use App\Listeners\BroadcastNotificationSent;
+use App\Listeners\StoreAggregateEvent;
+use App\Listeners\TriggerContractNotifications;
+use App\Listeners\TriggerIncidentNotifications;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider
@@ -24,12 +27,17 @@ class EventServiceProvider extends ServiceProvider
     protected $listen = [
         ContractUpdated::class => [
             BroadcastContractUpdated::class,
+            StoreAggregateEvent::class,
+            TriggerContractNotifications::class,
         ],
         IncidentUpdated::class => [
             BroadcastIncidentUpdated::class,
+            StoreAggregateEvent::class,
+            TriggerIncidentNotifications::class,
         ],
         AssetUpdated::class => [
             BroadcastAssetUpdated::class,
+            StoreAggregateEvent::class,
         ],
         AlertTriggered::class => [
             BroadcastAlertTriggered::class,
@@ -55,4 +63,3 @@ class EventServiceProvider extends ServiceProvider
         return false;
     }
 }
-

@@ -1,6 +1,3 @@
-import { redirect } from "next/navigation";
-
 export default function HomePage() {
-  redirect("/login");
+  return <main className="min-h-screen bg-white" />;
 }
-

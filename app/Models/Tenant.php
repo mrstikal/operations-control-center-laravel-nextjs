@@ -4,9 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Tenant extends Model
@@ -15,8 +13,6 @@ class Tenant extends Model
 
     protected $fillable = [
         'name',
-        'slug',
-        'domain',
         'description',
         'status',
         'metadata',
@@ -64,22 +60,6 @@ class Tenant extends Model
         return $this->hasMany(Incident::class);
     }
 
-    /**
-     * Get all roles for this tenant.
-     */
-    public function roles(): HasMany
-    {
-        return $this->hasMany(Role::class);
-    }
-
-    /**
-     * Get all permissions for this tenant.
-     */
-    public function permissions(): HasMany
-    {
-        return $this->hasMany(Permission::class);
-    }
-
     // ========== SCOPES ==========
 
     /**
@@ -122,4 +102,3 @@ class Tenant extends Model
         return $this->status === 'active';
     }
 }
-

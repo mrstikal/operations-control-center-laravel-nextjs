@@ -2,22 +2,48 @@
 
 namespace Tests\Unit\Models;
 
-use App\Models\User;
+use App\Models\Permission;
 use App\Models\Role;
+use App\Models\Tenant;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class UserTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected User $user;
+
     protected Role $adminRole;
+
     protected Role $managerRole;
+
+    protected Role $superadminRole;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->user = User::factory()->create();
-        $this->adminRole = Role::where('name', 'Admin')->first();
-        $this->managerRole = Role::where('name', 'Manager')->first();
+
+        $tenant = Tenant::create([
+            'name' => 'Test Company',
+            'status' => 'active',
+        ]);
+
+        $this->adminRole = Role::where('name', 'Admin')->firstOrFail();
+        $this->superadminRole = Role::where('name', 'Superadmin')->firstOrFail();
+        $this->managerRole = Role::where('name', 'Manager')->firstOrFail();
+
+        $permission = Permission::where('resource', 'contracts')
+            ->where('action', 'view')
+            ->firstOrFail();
+
+        $this->adminRole->permissions()->syncWithoutDetaching([$permission->id]);
+
+        $this->user = User::factory()->create([
+            'tenant_id' => $tenant->id,
+            'role' => 'viewer',
+        ]);
     }
 
     /**
@@ -73,6 +99,19 @@ class UserTest extends TestCase
     }
 
     /**
+     * Test: Legacy role attribute does not grant admin access without RBAC role.
+     */
+    public function test_legacy_role_attribute_does_not_grant_admin_access(): void
+    {
+        $legacyAdmin = User::factory()->create([
+            'tenant_id' => $this->user->tenant_id,
+            'role' => 'admin',
+        ]);
+
+        $this->assertFalse($legacyAdmin->isAdmin());
+    }
+
+    /**
      * Test: User can check permission
      */
     public function test_user_can_check_permission(): void
@@ -89,10 +128,35 @@ class UserTest extends TestCase
     public function test_user_without_permission_cannot_access(): void
     {
         $viewerRole = Role::where('name', 'Viewer')->first();
-        $this->user->roles()->attach($viewerRole);
+        $this->user->roles()->sync([$viewerRole->id]);
 
         // Viewer cannot create contracts
         $this->assertFalse($this->user->hasPermission('contracts', 'create'));
     }
-}
 
+    /**
+     * Test: Superadmin has implicit full permission bypass.
+     */
+    public function test_superadmin_has_implicit_full_permissions(): void
+    {
+        $this->user->roles()->attach($this->superadminRole);
+
+        $this->assertTrue($this->user->hasPermission('contracts', 'create'));
+        $this->assertTrue($this->user->hasPermission('system', 'manage_tenants'));
+    }
+
+    /**
+     * Test: Legacy superadmin role attribute keeps superadmin capabilities.
+     */
+    public function test_legacy_superadmin_role_attribute_grants_superadmin_access(): void
+    {
+        $legacySuperadmin = User::factory()->create([
+            'tenant_id' => $this->user->tenant_id,
+            'role' => 'superadmin',
+        ]);
+
+        $this->assertTrue($legacySuperadmin->isSuperadmin());
+        $this->assertTrue($legacySuperadmin->isAdmin());
+        $this->assertTrue($legacySuperadmin->hasPermission('system', 'manage_tenants'));
+    }
+}

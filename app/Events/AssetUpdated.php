@@ -15,7 +15,9 @@ class AssetUpdated implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public Asset $asset;
+
     public string $action;
+
     public array $changes;
 
     /**
@@ -62,7 +64,6 @@ class AssetUpdated implements ShouldBroadcast
      */
     public function broadcastAs(): string
     {
-        return 'asset.' . $this->action;
+        return 'asset.'.$this->action;
     }
 }
-

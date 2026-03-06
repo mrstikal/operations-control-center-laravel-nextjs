@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\ExistsInTenant;
+use App\Services\Tenancy\TenantAccessService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreIncidentRequest extends FormRequest
 {
@@ -19,15 +22,32 @@ class StoreIncidentRequest extends FormRequest
      */
     public function rules(): array
     {
+        $tenantId = $this->resolvedTenantId();
+
         return [
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'category' => 'required|string|max:100',
             'severity' => 'required|in:low,medium,high,critical',
             'priority' => 'required|in:low,medium,high,critical',
-            'assigned_to' => 'nullable|exists:users,id',
-            'contract_id' => 'nullable|exists:contracts,id',
-            'asset_id' => 'nullable|exists:assets,id',
+            'tenant_id' => [
+                'nullable',
+                'integer',
+                'exists:tenants,id',
+                Rule::prohibitedIf(fn () => ! $this->user()?->isAdmin()),
+            ],
+            'assigned_to' => [
+                'nullable',
+                new ExistsInTenant('users', 'id', $tenantId),
+            ],
+            'contract_id' => [
+                'nullable',
+                new ExistsInTenant('contracts', 'id', $tenantId),
+            ],
+            'asset_id' => [
+                'nullable',
+                new ExistsInTenant('assets', 'id', $tenantId),
+            ],
             'sla_response_minutes' => 'nullable|integer|min:5',
             'sla_resolution_minutes' => 'nullable|integer|min:30',
             'tags' => 'nullable|json',
@@ -46,5 +66,14 @@ class StoreIncidentRequest extends FormRequest
             'priority.required' => 'Priorita je povinná',
         ];
     }
-}
 
+    private function resolvedTenantId(): int
+    {
+        $user = $this->user();
+        if (! $user) {
+            return 0;
+        }
+
+        return app(TenantAccessService::class)->resolveTenantId($user, $this);
+    }
+}

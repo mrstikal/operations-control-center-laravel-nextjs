@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Asset extends Model
 {
-    use HasFactory, SoftDeletes;
+    use BelongsToTenant, HasFactory, SoftDeletes;
 
     protected $fillable = [
         'tenant_id',
@@ -21,6 +23,7 @@ class Asset extends Model
         'description',
         'location',
         'department',
+        'assigned_to',
         'manufacturer',
         'model',
         'acquisition_date',
@@ -50,14 +53,19 @@ class Asset extends Model
 
     /**
      * Get the tenant this asset belongs to.
+     *
+     * @return BelongsTo<Tenant, $this>
      */
     public function tenant(): BelongsTo
     {
-        return $this->belongsTo(Tenant::class);
+        // Keep tenant context visible even when tenant is soft-deleted.
+        return $this->belongsTo(Tenant::class)->withTrashed();
     }
 
     /**
      * Get the asset category.
+     *
+     * @return BelongsTo<AssetCategory, $this>
      */
     public function category(): BelongsTo
     {
@@ -66,6 +74,8 @@ class Asset extends Model
 
     /**
      * Get all maintenance logs for this asset.
+     *
+     * @return HasMany<MaintenanceLog, $this>
      */
     public function maintenanceLogs(): HasMany
     {
@@ -75,6 +85,8 @@ class Asset extends Model
 
     /**
      * Get all maintenance schedules.
+     *
+     * @return HasMany<MaintenanceSchedule, $this>
      */
     public function maintenanceSchedules(): HasMany
     {
@@ -83,6 +95,8 @@ class Asset extends Model
 
     /**
      * Get all incidents for this asset.
+     *
+     * @return HasMany<Incident, $this>
      */
     public function incidents(): HasMany
     {
@@ -91,11 +105,23 @@ class Asset extends Model
 
     /**
      * Get the audit trail.
+     *
+     * @return HasMany<AssetAuditTrail, $this>
      */
     public function auditTrail(): HasMany
     {
         return $this->hasMany(AssetAuditTrail::class)
             ->orderBy('action_at', 'desc');
+    }
+
+    /**
+     * Get the currently assigned user.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function assignedTo(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 
     // ========== SCOPES ==========
@@ -105,7 +131,7 @@ class Asset extends Model
      */
     public function scopeOfTenant($query, $tenantId)
     {
-        return $query->where('tenant_id', $tenantId);
+        return $query->where('assets.tenant_id', $tenantId);
     }
 
     /**
@@ -114,6 +140,106 @@ class Asset extends Model
     public function scopeByStatus($query, $status)
     {
         return $query->where('status', $status);
+    }
+
+    /**
+     * Scope to filter by status including deleted pseudo-status.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeFilterStatus(Builder $query, ?string $status): Builder
+    {
+        if ($status === 'deleted') {
+            return $query->onlyTrashed();
+        }
+
+        if ($status) {
+            return $query->where('status', $status);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Scope to filter by category.
+     */
+    public function scopeFilterCategory(Builder $query, mixed $categoryId): Builder
+    {
+        if (! $categoryId) {
+            return $query;
+        }
+
+        return $query->where('category_id', $categoryId);
+    }
+
+    /**
+     * Scope to filter by location.
+     */
+    public function scopeFilterLocation(Builder $query, ?string $location): Builder
+    {
+        if (! $location) {
+            return $query;
+        }
+
+        return $query->where('location', $location);
+    }
+
+    /**
+     * Scope to filter assets due for maintenance.
+     */
+    public function scopeFilterDueForMaintenance(Builder $query, mixed $dueForMaintenance): Builder
+    {
+        if ($dueForMaintenance === null || $dueForMaintenance === '' || $dueForMaintenance === false) {
+            return $query;
+        }
+
+        return $query->where('next_maintenance', '<=', now());
+    }
+
+    /**
+     * Scope to search assets.
+     */
+    public function scopeSearch(Builder $query, ?string $search, string $driver): Builder
+    {
+        if (! $search) {
+            return $query;
+        }
+
+        if ($driver === 'mysql') {
+            return $query->whereRaw('MATCH(name, description, serial_number) AGAINST(? IN BOOLEAN MODE)', [$search]);
+        }
+
+        $like = '%'.$search.'%';
+
+        return $query->where(function (Builder $innerQuery) use ($like): void {
+            $innerQuery->where('name', 'like', $like)
+                ->orWhere('description', 'like', $like)
+                ->orWhere('serial_number', 'like', $like);
+        });
+    }
+
+    /**
+     * Scope to apply API index sorting.
+     */
+    public function scopeSortForIndex(Builder $query, ?string $sortKey, string $sortDirection = 'asc'): Builder
+    {
+        return match ($sortKey) {
+            'category' => $query->leftJoin('asset_categories as ac', 'ac.id', '=', 'assets.category_id')
+                ->select('assets.*')
+                ->orderBy('ac.name', $sortDirection)
+                ->orderBy('assets.id', 'asc'),
+            'status' => $query->orderByRaw(
+                "CASE status
+                    WHEN 'operational' THEN 1
+                    WHEN 'maintenance' THEN 2
+                    WHEN 'repair' THEN 3
+                    WHEN 'retired' THEN 4
+                    WHEN 'disposed' THEN 5
+                    ELSE 999 END {$sortDirection}"
+            ),
+            default => $query->orderBy('created_at', 'desc'),
+        };
     }
 
     /**
@@ -156,7 +282,10 @@ class Asset extends Model
      */
     public function daysUntilMaintenance(): ?int
     {
-        if (!$this->next_maintenance) return null;
+        if (! $this->next_maintenance) {
+            return null;
+        }
+
         return (int) now()->diffInDays($this->next_maintenance);
     }
 
@@ -185,5 +314,24 @@ class Asset extends Model
             ...$data,
         ]);
     }
-}
 
+    /**
+     * Persist an audit record for an asset action.
+     */
+    public function recordAudit(
+        string $action,
+        int $userId,
+        ?array $oldValues = null,
+        ?array $newValues = null,
+        ?string $reason = null
+    ): AssetAuditTrail {
+        return $this->auditTrail()->create([
+            'user_id' => $userId,
+            'action' => $action,
+            'old_values' => $oldValues,
+            'new_values' => $newValues,
+            'reason' => $reason,
+            'action_at' => now(),
+        ]);
+    }
+}

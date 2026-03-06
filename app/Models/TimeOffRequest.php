@@ -19,6 +19,7 @@ class TimeOffRequest extends Model
         'approval_note',
         'requested_at',
         'decided_at',
+        'archived_at',
     ];
 
     protected $casts = [
@@ -26,6 +27,7 @@ class TimeOffRequest extends Model
         'end_date' => 'datetime',
         'requested_at' => 'datetime',
         'decided_at' => 'datetime',
+        'archived_at' => 'datetime',
     ];
 
     // ========== RELATIONS ==========
@@ -108,4 +110,3 @@ class TimeOffRequest extends Model
         return $this->status === 'pending';
     }
 }
-

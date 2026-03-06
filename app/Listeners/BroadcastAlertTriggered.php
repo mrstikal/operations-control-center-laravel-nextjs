@@ -22,4 +22,3 @@ class BroadcastAlertTriggered implements ShouldQueue
         // Laravel automaticky broadcastuje
     }
 }
-

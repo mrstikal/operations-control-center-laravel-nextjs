@@ -59,4 +59,3 @@ class SearchQuery extends Model
         return $query->where('searched_at', '>=', now()->subDays($days));
     }
 }
-

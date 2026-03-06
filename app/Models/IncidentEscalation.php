@@ -69,4 +69,3 @@ class IncidentEscalation extends Model
         return is_null($this->resolved_at);
     }
 }
-

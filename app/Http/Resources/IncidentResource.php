@@ -2,11 +2,14 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Incident;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * IncidentResource - API Resource pro Incident model
+ *
+ * @mixin Incident
  */
 class IncidentResource extends JsonResource
 {
@@ -26,11 +29,20 @@ class IncidentResource extends JsonResource
             'severity' => $this->severity,
             'priority' => $this->priority,
             'status' => $this->status,
-            'reported_by' => [
-                'id' => $this->reportedBy->id,
-                'name' => $this->reportedBy->name,
-                'email' => $this->reportedBy->email,
-            ],
+            'tenant' => $this->whenLoaded('tenant', function () {
+                return $this->tenant ? [
+                    'id' => $this->tenant->id,
+                    'name' => $this->tenant->name,
+                    'deleted_at' => $this->tenant->deleted_at?->toIso8601String(),
+                ] : null;
+            }),
+            'reported_by' => $this->whenLoaded('reportedBy', function () {
+                return $this->reportedBy ? [
+                    'id' => $this->reportedBy->id,
+                    'name' => $this->reportedBy->name,
+                    'email' => $this->reportedBy->email,
+                ] : null;
+            }),
             'assigned_to' => $this->whenLoaded('assignedTo', function () {
                 return [
                     'id' => $this->assignedTo->id,
@@ -72,7 +84,7 @@ class IncidentResource extends JsonResource
             'tags' => $this->tags ?? [],
             'created_at' => $this->created_at->toIso8601String(),
             'updated_at' => $this->updated_at->toIso8601String(),
+            'deleted_at' => $this->deleted_at?->toIso8601String(),
         ];
     }
 }
-

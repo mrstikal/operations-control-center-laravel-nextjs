@@ -14,6 +14,7 @@ class DashboardStatsUpdated implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public int $tenantId;
+
     public array $stats;
 
     /**
@@ -57,4 +58,3 @@ class DashboardStatsUpdated implements ShouldBroadcast
         return 'dashboard.stats_updated';
     }
 }
-

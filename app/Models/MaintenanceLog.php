@@ -56,4 +56,3 @@ class MaintenanceLog extends Model
         return $query->where('type', $type);
     }
 }
-

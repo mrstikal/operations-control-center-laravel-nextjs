@@ -2,8 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\Permission;
-use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -18,103 +16,182 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create default tenant
-        $tenant = Tenant::firstOrCreate(
-            ['slug' => 'default'],
+        // Delete old Default Tenant if exists
+        Tenant::where('name', 'Default Tenant')->forceDelete();
+
+        // Create production-ready tenants
+        $tenants = [
             [
-                'name' => 'Default Tenant',
-                'domain' => 'localhost',
+                'name' => 'Acme Corporation',
+                'description' => 'Global manufacturing and logistics enterprise with operations across North America and Europe.',
                 'status' => 'active',
-            ]
-        );
-
-        // Create roles
-        $adminRole = Role::firstOrCreate(
-            ['tenant_id' => $tenant->id, 'name' => 'Admin'],
+                'metadata' => [
+                    'industry' => 'Manufacturing',
+                    'employee_count' => 5000,
+                    'locations' => ['New York', 'London', 'Frankfurt'],
+                    'primary_contact' => 'operations@acme-corp.com',
+                ],
+            ],
             [
-                'description' => 'System Administrator',
-                'level' => 'admin',
-                'is_system' => true,
-            ]
-        );
-
-        $managerRole = Role::firstOrCreate(
-            ['tenant_id' => $tenant->id, 'name' => 'Manager'],
+                'name' => 'TechVision Solutions',
+                'description' => 'Leading IT services and cloud infrastructure provider specializing in enterprise solutions.',
+                'status' => 'active',
+                'metadata' => [
+                    'industry' => 'Technology',
+                    'employee_count' => 1200,
+                    'locations' => ['San Francisco', 'Austin', 'Seattle'],
+                    'primary_contact' => 'support@techvision.io',
+                ],
+            ],
             [
-                'description' => 'Operations Manager',
-                'level' => 'manager',
-            ]
-        );
-
-        $technicianRole = Role::firstOrCreate(
-            ['tenant_id' => $tenant->id, 'name' => 'Technician'],
+                'name' => 'HealthCare Plus',
+                'description' => 'Multi-facility healthcare network providing comprehensive medical services and emergency care.',
+                'status' => 'active',
+                'metadata' => [
+                    'industry' => 'Healthcare',
+                    'employee_count' => 3500,
+                    'locations' => ['Boston', 'Chicago', 'Miami'],
+                    'primary_contact' => 'facilities@healthcareplus.org',
+                ],
+            ],
             [
-                'description' => 'Field Technician',
-                'level' => 'technician',
-            ]
-        );
+                'name' => 'GreenErgy Systems',
+                'description' => 'Renewable energy infrastructure company managing solar and wind installations nationwide.',
+                'status' => 'active',
+                'metadata' => [
+                    'industry' => 'Energy',
+                    'employee_count' => 800,
+                    'locations' => ['Denver', 'Phoenix', 'Portland'],
+                    'primary_contact' => 'ops@greenergy.com',
+                ],
+            ],
+            [
+                'name' => 'Global Logistics Partners',
+                'description' => 'International freight and supply chain management company with worldwide distribution network.',
+                'status' => 'active',
+                'metadata' => [
+                    'industry' => 'Logistics',
+                    'employee_count' => 2200,
+                    'locations' => ['Los Angeles', 'Houston', 'Atlanta'],
+                    'primary_contact' => 'dispatch@globallogistics.net',
+                ],
+            ],
+        ];
 
-        // Create permissions
-        $resources = ['contracts', 'incidents', 'assets', 'employees', 'users'];
-        $actions = ['view', 'create', 'edit', 'delete'];
-
-        foreach ($resources as $resource) {
-            foreach ($actions as $action) {
-                Permission::firstOrCreate(
-                    [
-                        'tenant_id' => $tenant->id,
-                        'resource' => $resource,
-                        'action' => $action,
-                    ],
-                    [
-                        'name' => "{$resource}.{$action}",
-                        'description' => ucfirst($action) . ' ' . $resource,
-                    ]
-                );
-            }
+        $createdTenants = [];
+        foreach ($tenants as $tenantData) {
+            $createdTenants[] = Tenant::firstOrCreate(
+                ['name' => $tenantData['name']],
+                $tenantData
+            );
         }
 
-        // Assign all permissions to Admin role
-        $adminPermissions = Permission::where('tenant_id', $tenant->id)->get();
-        $adminRole->permissions()->sync($adminPermissions->pluck('id'));
+        // Use first tenant for test users (Acme Corporation)
+        $tenant = $createdTenants[0];
 
-        // Assign view permissions to Manager role
-        $managerPermissions = Permission::where('tenant_id', $tenant->id)
-            ->where('action', 'view')
-            ->get();
-        $managerRole->permissions()->sync($managerPermissions->pluck('id'));
-
-        // Assign only view to Technician role
-        $technicianPermissions = Permission::where('tenant_id', $tenant->id)
-            ->where('action', 'view')
-            ->where('resource', '!=', 'users')
-            ->get();
-        $technicianRole->permissions()->sync($technicianPermissions->pluck('id'));
-
-        // Admin user for OCC
-        $admin = User::firstOrCreate(
-            ['email' => 'admin@test.local'],
+        // Deterministic test logins for dashboard RBAC comparison
+        // Roles are assigned via RoleAndPermissionSeeder, not via users.role column
+        $users = [
             [
+                'email' => 'superadmin@test.local',
+                'name' => 'Superadmin User',
+                'employee_id' => 'ACM-0001',
+                'phone' => '+420 601 100 001',
+                'bio' => 'Platform superadmin responsible for tenant governance and security posture.',
+            ],
+            [
+                'email' => 'admin@test.local',
                 'name' => 'Admin User',
-                'password' => bcrypt('password'),
-                'tenant_id' => $tenant->id,
-            ]
-        );
-        $admin->roles()->sync([$adminRole->id]);
+                'employee_id' => 'ACM-0002',
+                'phone' => '+420 601 100 002',
+                'bio' => 'Tenant administrator coordinating daily operations and access control.',
+            ],
+            [
+                'email' => 'manager@test.local',
+                'name' => 'Manager User',
+                'employee_id' => 'ACM-0003',
+                'phone' => '+420 601 100 003',
+                'bio' => 'Operations manager overseeing SLA delivery and team capacity.',
+            ],
+            [
+                'email' => 'tech@test.local',
+                'name' => 'Technician User',
+                'employee_id' => 'ACM-0004',
+                'phone' => '+420 601 100 004',
+                'bio' => 'Senior technician focused on diagnostics and field operations.',
+            ],
+            [
+                'email' => 'viewer@test.local',
+                'name' => 'Viewer User',
+                'employee_id' => 'ACM-0005',
+                'phone' => '+420 601 100 005',
+                'bio' => 'Read-only reporting user for operational visibility.',
+            ],
+            [
+                'email' => 'viewer-management@test.local',
+                'name' => 'Viewer-Management User',
+                'employee_id' => 'ACM-0006',
+                'phone' => '+420 601 100 006',
+                'bio' => 'Management viewer for strategic reporting and KPI oversight.',
+            ],
+            [
+                'email' => 'viewer-auditor@test.local',
+                'name' => 'Viewer-Auditor User',
+                'employee_id' => 'ACM-0007',
+                'phone' => '+420 601 100 007',
+                'bio' => 'Audit viewer focused on compliance checks and traceability.',
+            ],
+            [
+                'email' => 'viewer-client@test.local',
+                'name' => 'Viewer-Client User',
+                'employee_id' => 'ACM-0008',
+                'phone' => '+420 601 100 008',
+                'bio' => 'Client-facing viewer with access to owned service areas.',
+            ],
+        ];
 
-        // Additional test users
-        $users = User::factory(5)->create(['tenant_id' => $tenant->id]);
-        foreach ($users as $user) {
-            $user->roles()->sync([$managerRole->id]);
+        $seedPasswordHash = bcrypt((string) env('EMPLOYEE_SEEDER_PASSWORD', 'password'));
+
+        foreach ($users as $userData) {
+            User::firstOrCreate(
+                ['email' => $userData['email']],
+                [
+                    'tenant_id' => $tenant->id,
+                    'name' => $userData['name'],
+                    'password' => $seedPasswordHash,
+                    'status' => 'active',
+                    'employee_id' => $userData['employee_id'],
+                    'phone' => $userData['phone'],
+                    'bio' => $userData['bio'],
+                ]
+            );
         }
 
-        // Call other seeders
+        // Create roles & permissions AFTER users exist
+        // (so RoleAndPermissionSeeder can find and assign roles to users)
+        $this->call([
+            RoleAndPermissionSeeder::class,
+        ]);
+
+        // Data seeders
         $this->call([
             ContractSeeder::class,
             IncidentSeeder::class,
             AssetSeeder::class,
+            MaintenanceScheduleSeeder::class,
+            MaintenanceLogSeeder::class,
+            NotificationScheduleSeeder::class,
+            NotificationSeeder::class,
+            AssetAuditTrailSeeder::class,
+            DepartmentSeeder::class,
             EmployeeSeeder::class,
-            DashboardEventSeeder::class,
+            ShiftSeeder::class,
+            EmployeeShiftSeeder::class,
+            TimeOffRequestSeeder::class,
+            WorkloadSeeder::class,
+            EventSeeder::class,
+            EventProjectionsSeeder::class,
+            EventSnapshotsSeeder::class,
         ]);
     }
 }

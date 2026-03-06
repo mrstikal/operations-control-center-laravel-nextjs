@@ -1,6 +1,11 @@
 <?php
 
 return [
+    'auth' => [
+        // Demo hardening: public registration is disabled unless explicitly enabled.
+        'allow_public_registration' => env('ALLOW_PUBLIC_REGISTRATION', false),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Frontend Configuration
@@ -21,4 +26,3 @@ return [
         'mode' => env('FRONTEND_MODE', app()->environment('local') ? 'redirect' : 'static'),
     ],
 ];
-

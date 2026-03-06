@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Event extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'events';
 
     public $timestamps = true;
@@ -35,6 +38,8 @@ class Event extends Model
 
     /**
      * Get the tenant this event belongs to.
+     *
+     * @return BelongsTo<Tenant, $this>
      */
     public function tenant(): BelongsTo
     {
@@ -43,6 +48,8 @@ class Event extends Model
 
     /**
      * Get the user who triggered this event.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {
@@ -91,7 +98,7 @@ class Event extends Model
      */
     public function getRelatedEvents()
     {
-        if (!$this->correlation_id) {
+        if (! $this->correlation_id) {
             return collect([$this]);
         }
 
@@ -105,11 +112,10 @@ class Event extends Model
      */
     public function getCausation()
     {
-        if (!$this->causation_id) {
+        if (! $this->causation_id) {
             return null;
         }
 
         return static::find($this->causation_id);
     }
 }
-

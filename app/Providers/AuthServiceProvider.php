@@ -5,10 +5,14 @@ namespace App\Providers;
 use App\Models\Asset;
 use App\Models\Contract;
 use App\Models\Incident;
+use App\Models\Notification;
+use App\Models\NotificationSchedule;
 use App\Models\User;
 use App\Policies\AssetPolicy;
 use App\Policies\ContractPolicy;
 use App\Policies\IncidentPolicy;
+use App\Policies\NotificationPolicy;
+use App\Policies\NotificationSchedulePolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
@@ -25,6 +29,8 @@ class AuthServiceProvider extends ServiceProvider
         Incident::class => IncidentPolicy::class,
         Asset::class => AssetPolicy::class,
         User::class => UserPolicy::class,
+        Notification::class => NotificationPolicy::class,
+        NotificationSchedule::class => NotificationSchedulePolicy::class,
     ];
 
     /**
@@ -32,6 +38,10 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::before(function (User $user) {
+            return $user->isSuperadmin() ? true : null;
+        });
+
         // Define gates for granular access control
 
         // Admin gate - pro full access
@@ -91,4 +101,3 @@ class AuthServiceProvider extends ServiceProvider
         });
     }
 }
-

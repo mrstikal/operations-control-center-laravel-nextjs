@@ -7,12 +7,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ContractStatusHistory extends Model
 {
+    protected $table = 'contract_status_history';
+
     public $timestamps = true;
 
     protected $fillable = [
         'contract_id',
         'old_status',
         'new_status',
+        'from_status',
+        'to_status',
         'changed_by',
         'reason',
         'changed_at',
@@ -40,4 +44,3 @@ class ContractStatusHistory extends Model
         return $this->belongsTo(User::class, 'changed_by');
     }
 }
-

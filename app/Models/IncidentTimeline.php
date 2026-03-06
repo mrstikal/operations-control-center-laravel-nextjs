@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class IncidentTimeline extends Model
 {
+    // Migration creates singular table name.
+    protected $table = 'incident_timeline';
+
     public $timestamps = true;
 
     protected $fillable = [
@@ -41,4 +44,3 @@ class IncidentTimeline extends Model
         return $this->belongsTo(User::class);
     }
 }
-

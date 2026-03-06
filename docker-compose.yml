@@ -1,15 +1,14 @@
-version: "3.8"
 
 services:
   postgres:
     image: postgres:16-alpine
     container_name: occ-postgres
     ports:
-      - "5440:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5440}:5432"
     environment:
       POSTGRES_DB: operations_control_center
       POSTGRES_USER: occ_user
-      POSTGRES_PASSWORD: occ_secure_password_123
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -26,12 +25,14 @@ services:
     image: redis:7-alpine
     container_name: occ-redis
     ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    command: ["sh", "-c", "redis-server --appendonly yes --requirepass \"$${REDIS_PASSWORD}\""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "[ \"$(redis-cli -a \"$${REDIS_PASSWORD}\" ping)\" = \"PONG\" ]"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -39,11 +40,11 @@ services:
       - occ-network
 
   mailhog:
-    image: mailhog/mailhog:latest
+    image: mailhog/mailhog:v1.0.1
     container_name: occ-mailhog
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "127.0.0.1:${MAILHOG_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILHOG_UI_PORT:-8025}:8025"
     networks:
       - occ-network
 

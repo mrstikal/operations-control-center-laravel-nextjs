@@ -15,7 +15,9 @@ class ContractUpdated implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public Contract $contract;
+
     public string $action;
+
     public array $changes;
 
     /**
@@ -61,7 +63,6 @@ class ContractUpdated implements ShouldBroadcast
      */
     public function broadcastAs(): string
     {
-        return 'contract.' . $this->action;
+        return 'contract.'.$this->action;
     }
 }
-

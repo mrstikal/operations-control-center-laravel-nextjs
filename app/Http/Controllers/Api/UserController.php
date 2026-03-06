@@ -7,21 +7,21 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
 /**
- * UserController - REST API pro Users
+ * UserController - REST API for Users.
  */
 class UserController extends BaseApiController
 {
     /**
      * GET /api/users
-     * Vrátí seznam uživatelů tenanta
+     * List all users in the current tenant.
      */
     public function index(): JsonResponse
     {
         $users = User::ofTenant($this->getTenantId())
-            ->with('roles', 'employeeProfile')
-            ->when(request('role'), fn($q) => $q->whereHas('roles', fn($r) => $r->where('name', request('role'))))
-            ->when(request('status'), fn($q) => $q->where('status', request('status')))
-            ->when(request('search'), fn($q) => $q->where('name', 'like', '%' . request('search') . '%')->orWhere('email', 'like', '%' . request('search') . '%'))
+            ->with(['roles' => fn ($q) => $q->with('permissions')], 'employeeProfile')
+            ->when(request('role'), fn ($q) => $q->whereHas('roles', fn ($r) => $r->where('name', request('role'))))
+            ->when(request('status'), fn ($q) => $q->where('status', request('status')))
+            ->when(request('search'), fn ($q) => $q->where('name', 'like', '%'.request('search').'%')->orWhere('email', 'like', '%'.request('search').'%'))
             ->orderBy('created_at', 'desc')
             ->paginate(request('per_page', 15));
 
@@ -30,33 +30,33 @@ class UserController extends BaseApiController
 
     /**
      * GET /api/users/{id}
-     * Vrátí detail uživatele
+     * Get user details.
      */
     public function show(User $user): JsonResponse
     {
         $this->authorize('view', $user);
 
         return $this->success(
-            new UserResource($user->load('roles', 'employeeProfile')),
+            new UserResource($user->load(['roles' => fn ($q) => $q->with('permissions')], 'employeeProfile')),
             'User retrieved successfully'
         );
     }
 
     /**
      * GET /api/users/profile/me
-     * Vrátí aktuálně přihlášeného uživatele
+     * Get current authenticated user profile.
      */
     public function profile(): JsonResponse
     {
         return $this->success(
-            new UserResource(auth()->user()->load('roles', 'employeeProfile')),
+            new UserResource(auth()->user()->load(['roles' => fn ($q) => $q->with('permissions')], 'employeeProfile')),
             'Current user profile'
         );
     }
 
     /**
      * PUT /api/users/{id}/update-profile
-     * Aktualizuje profil uživatele
+     * Update user profile.
      */
     public function updateProfile(User $user): JsonResponse
     {
@@ -73,14 +73,14 @@ class UserController extends BaseApiController
         $user->update($validated);
 
         return $this->success(
-            new UserResource($user->fresh()->load('roles', 'employeeProfile')),
+            new UserResource($user->fresh()->load(['roles' => fn ($q) => $q->with('permissions')], 'employeeProfile')),
             'Profile updated successfully'
         );
     }
 
     /**
      * POST /api/users/{id}/assign-role
-     * Přiřadí roli uživateli
+     * Assign a role to user.
      */
     public function assignRole(User $user): JsonResponse
     {
@@ -92,12 +92,12 @@ class UserController extends BaseApiController
 
         $role = \App\Models\Role::find($validated['role_id']);
 
-        if (!$user->roles->contains($role)) {
+        if (! $user->roles->contains($role)) {
             $user->roles()->attach($role);
         }
 
         return $this->success(
-            new UserResource($user->fresh()->load('roles')),
+            new UserResource($user->fresh()->load(['roles' => fn ($q) => $q->with('permissions')])),
             'Role assigned successfully'
         );
     }
@@ -113,9 +113,8 @@ class UserController extends BaseApiController
         $user->roles()->detach($roleId);
 
         return $this->success(
-            new UserResource($user->fresh()->load('roles')),
+            new UserResource($user->fresh()->load(['roles' => fn ($q) => $q->with('permissions')])),
             'Role removed successfully'
         );
     }
 }
-

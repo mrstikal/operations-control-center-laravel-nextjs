@@ -13,26 +13,24 @@ return new class extends Migration
     {
         Schema::create('permissions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
             $table->string('name')->index();
             $table->string('description')->nullable();
             $table->string('resource')->index(); // contracts, assets, incidents, etc.
             $table->string('action'); // view, create, edit, delete
             $table->timestamps();
-            $table->unique(['tenant_id', 'resource', 'action']);
+            $table->unique(['resource', 'action']);
         });
 
         Schema::create('roles', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
             $table->string('name')->index();
             $table->string('description')->nullable();
-            $table->enum('level', ['admin', 'manager', 'technician', 'viewer'])->index();
+            $table->unsignedTinyInteger('level')->index()->comment('5=superadmin, 4=admin, 3=manager, 2=technician, 1=viewer');
             $table->json('metadata')->nullable();
             $table->boolean('is_system')->default(false);
             $table->timestamps();
             $table->softDeletes();
-            $table->unique(['tenant_id', 'name']);
+            $table->unique(['name']);
         });
 
         Schema::create('role_permissions', function (Blueprint $table) {
@@ -64,4 +62,3 @@ return new class extends Migration
         Schema::dropIfExists('permissions');
     }
 };
-

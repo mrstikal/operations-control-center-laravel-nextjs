@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Contract;
+use App\Models\User;
 
 class ContractPolicy extends BasePolicy
 {
@@ -13,7 +13,7 @@ class ContractPolicy extends BasePolicy
     public function view(User $user, Contract $contract): bool
     {
         // Tenant isolation
-        if (!$this->sameTenantt($user, $contract)) {
+        if (! $this->belongsToTenant($user, $contract)) {
             return false;
         }
 
@@ -35,7 +35,7 @@ class ContractPolicy extends BasePolicy
     public function update(User $user, Contract $contract): bool
     {
         // Tenant isolation
-        if (!$this->sameTenantt($user, $contract)) {
+        if (! $this->belongsToTenant($user, $contract)) {
             return false;
         }
 
@@ -49,7 +49,7 @@ class ContractPolicy extends BasePolicy
     public function delete(User $user, Contract $contract): bool
     {
         // Tenant isolation
-        if (!$this->sameTenantt($user, $contract)) {
+        if (! $this->belongsToTenant($user, $contract)) {
             return false;
         }
 
@@ -63,7 +63,7 @@ class ContractPolicy extends BasePolicy
     public function approve(User $user, Contract $contract): bool
     {
         // Tenant isolation
-        if (!$this->sameTenantt($user, $contract)) {
+        if (! $this->belongsToTenant($user, $contract)) {
             return false;
         }
 
@@ -77,7 +77,7 @@ class ContractPolicy extends BasePolicy
     public function changeStatus(User $user, Contract $contract): bool
     {
         // Tenant isolation
-        if (!$this->sameTenantt($user, $contract)) {
+        if (! $this->belongsToTenant($user, $contract)) {
             return false;
         }
 
@@ -94,6 +94,14 @@ class ContractPolicy extends BasePolicy
      */
     public function restore(User $user, Contract $contract): bool
     {
+        if (! $this->belongsToTenant($user, $contract)) {
+            return false;
+        }
+
+        if (! $contract->trashed()) {
+            return false;
+        }
+
         return $user->hasPermission('contracts', 'edit');
     }
 
@@ -102,7 +110,14 @@ class ContractPolicy extends BasePolicy
      */
     public function forceDelete(User $user, Contract $contract): bool
     {
+        if (! $this->belongsToTenant($user, $contract)) {
+            return false;
+        }
+
+        if (! $contract->trashed()) {
+            return false;
+        }
+
         return $user->hasPermission('contracts', 'delete');
     }
 }
-

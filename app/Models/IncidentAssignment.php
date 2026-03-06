@@ -68,4 +68,3 @@ class IncidentAssignment extends Model
         return is_null($this->unassigned_at);
     }
 }
-

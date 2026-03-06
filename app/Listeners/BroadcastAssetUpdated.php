@@ -22,4 +22,3 @@ class BroadcastAssetUpdated implements ShouldQueue
         // Laravel automaticky broadcastuje
     }
 }
-

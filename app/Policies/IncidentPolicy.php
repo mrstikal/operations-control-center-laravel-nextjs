@@ -2,8 +2,8 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Incident;
+use App\Models\User;
 
 class IncidentPolicy extends BasePolicy
 {
@@ -13,7 +13,7 @@ class IncidentPolicy extends BasePolicy
     public function view(User $user, Incident $incident): bool
     {
         // Tenant isolation
-        if (!$this->sameTenantt($user, $incident)) {
+        if (! $this->belongsToTenant($user, $incident)) {
             return false;
         }
 
@@ -34,7 +34,7 @@ class IncidentPolicy extends BasePolicy
     public function update(User $user, Incident $incident): bool
     {
         // Tenant isolation
-        if (!$this->sameTenantt($user, $incident)) {
+        if (! $this->belongsToTenant($user, $incident)) {
             return false;
         }
 
@@ -47,7 +47,7 @@ class IncidentPolicy extends BasePolicy
     public function delete(User $user, Incident $incident): bool
     {
         // Tenant isolation
-        if (!$this->sameTenantt($user, $incident)) {
+        if (! $this->belongsToTenant($user, $incident)) {
             return false;
         }
 
@@ -60,7 +60,7 @@ class IncidentPolicy extends BasePolicy
     public function escalate(User $user, Incident $incident): bool
     {
         // Tenant isolation
-        if (!$this->sameTenantt($user, $incident)) {
+        if (! $this->belongsToTenant($user, $incident)) {
             return false;
         }
 
@@ -73,16 +73,11 @@ class IncidentPolicy extends BasePolicy
     public function close(User $user, Incident $incident): bool
     {
         // Tenant isolation
-        if (!$this->sameTenantt($user, $incident)) {
+        if (! $this->belongsToTenant($user, $incident)) {
             return false;
         }
 
-        // Manager, Admin, or assigned user
-        if ($incident->assigned_to === $user->id) {
-            return $user->hasPermission('incidents', 'close');
-        }
-
-        return $user->hasPermission('incidents', 'close') && $this->hasRole($user, ['Manager', 'Admin', 'Superadmin']);
+        return $user->hasPermission('incidents', 'close');
     }
 
     /**
@@ -90,6 +85,10 @@ class IncidentPolicy extends BasePolicy
      */
     public function restore(User $user, Incident $incident): bool
     {
+        if (! $this->belongsToTenant($user, $incident)) {
+            return false;
+        }
+
         return $user->hasPermission('incidents', 'edit');
     }
 
@@ -98,7 +97,10 @@ class IncidentPolicy extends BasePolicy
      */
     public function forceDelete(User $user, Incident $incident): bool
     {
+        if (! $this->belongsToTenant($user, $incident)) {
+            return false;
+        }
+
         return $user->hasPermission('incidents', 'delete');
     }
 }
-

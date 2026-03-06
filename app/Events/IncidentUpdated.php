@@ -15,7 +15,9 @@ class IncidentUpdated implements ShouldBroadcast
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public Incident $incident;
+
     public string $action;
+
     public array $changes;
 
     /**
@@ -63,7 +65,6 @@ class IncidentUpdated implements ShouldBroadcast
      */
     public function broadcastAs(): string
     {
-        return 'incident.' . $this->action;
+        return 'incident.'.$this->action;
     }
 }
-

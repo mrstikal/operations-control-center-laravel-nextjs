@@ -2,7 +2,10 @@
 
 namespace App\Http\Requests;
 
+use App\Rules\ExistsInTenant;
+use App\Services\Tenancy\TenantAccessService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreContractRequest extends FormRequest
 {
@@ -21,12 +24,26 @@ class StoreContractRequest extends FormRequest
      */
     public function rules(): array
     {
+        $tenantId = $this->resolvedTenantId();
+
         return [
             'contract_number' => 'required|string|unique:contracts,contract_number',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'client_id' => 'nullable|exists:users,id',
-            'assigned_to' => 'nullable|exists:users,id',
+            'tenant_id' => [
+                'nullable',
+                'integer',
+                'exists:tenants,id',
+                Rule::prohibitedIf(fn () => ! $this->user()?->isAdmin()),
+            ],
+            'client_id' => [
+                'nullable',
+                new ExistsInTenant('users', 'id', $tenantId),
+            ],
+            'assigned_to' => [
+                'nullable',
+                new ExistsInTenant('users', 'id', $tenantId),
+            ],
             'priority' => 'required|in:low,medium,high,critical',
             'start_date' => 'nullable|date',
             'due_date' => 'nullable|date|after_or_equal:start_date',
@@ -49,5 +66,14 @@ class StoreContractRequest extends FormRequest
             'due_date.after_or_equal' => 'Konečný termín musí být po/rovno počátečnímu termínu',
         ];
     }
-}
 
+    private function resolvedTenantId(): int
+    {
+        $user = $this->user();
+        if (! $user) {
+            return 0;
+        }
+
+        return app(TenantAccessService::class)->resolveTenantId($user, $this);
+    }
+}

@@ -108,4 +108,3 @@ class UserPolicy extends BasePolicy
         return $authUser->hasPermission('users', 'delete');
     }
 }
-

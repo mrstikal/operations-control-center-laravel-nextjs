@@ -17,13 +17,17 @@ class CheckRole
     /**
      * Handle an incoming request.
      */
-    public function handle(Request $request, Closure $next, string $roles = null): Response
+    public function handle(Request $request, Closure $next, ?string $roles = null): Response
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-        if (!$roles) {
+        if (! $roles) {
+            return $next($request);
+        }
+
+        if (auth()->user()->isSuperadmin()) {
             return $next($request);
         }
 
@@ -37,11 +41,10 @@ class CheckRole
             }
         }
 
-        if (!$userHasRole) {
+        if (! $userHasRole) {
             return response()->json(['message' => "Access denied. Required role(s): {$roles}"], 403);
         }
 
         return $next($request);
     }
 }
-

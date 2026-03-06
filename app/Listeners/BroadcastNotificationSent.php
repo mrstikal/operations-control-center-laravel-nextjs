@@ -22,4 +22,3 @@ class BroadcastNotificationSent implements ShouldQueue
         // Laravel automaticky broadcastuje
     }
 }
-
